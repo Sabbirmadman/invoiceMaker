@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Eye, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Eye, CheckCircle, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { downloadPdf } from '@/services/pdfExport'
 import { PageCanvas } from '@/components/canvas/PageCanvas'
 import { useAppSelector, useAppDispatch } from '@/hooks/useAppDispatch'
 import { updateDocument } from '@/store/slices/documentsSlice'
@@ -72,6 +73,10 @@ export default function FillModePage() {
                 <CheckCircle className="size-3" />
                 Auto-saved
               </span>
+              <Button variant="outline" size="sm" onClick={() => downloadPdf(doc!)}>
+                <Download className="size-4 mr-2" />
+                PDF
+              </Button>
               <Button variant="outline" size="sm" onClick={() => navigate(`/preview/${id}`)}>
                 <Eye className="size-4 mr-2" />
                 Preview

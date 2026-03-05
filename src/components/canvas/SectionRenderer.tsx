@@ -79,6 +79,9 @@ interface BodySectionRendererProps {
   totals: TotalsResult
   currentPage: number
   totalPages: number
+  showTotals?: boolean
+  showColumnHeader?: boolean
+  isFirstPage?: boolean
 }
 
 export function BodySectionRenderer({
@@ -87,6 +90,9 @@ export function BodySectionRenderer({
   totals,
   currentPage,
   totalPages,
+  showTotals = true,
+  showColumnHeader = true,
+  isFirstPage = true,
 }: BodySectionRendererProps) {
   const sorted = [...section.elements].sort((a, b) => a.zIndex - b.zIndex)
 
@@ -96,9 +102,15 @@ export function BodySectionRenderer({
         if (el.type === 'watermark') {
           return <WatermarkElement key={el.id} element={el} />
         }
+        // billTo and shipTo only appear on first page
+        if ((el.type === 'billTo' || el.type === 'shipTo') && !isFirstPage) return null
+        // totalsBlock only on last page (showTotals flag)
+        if (el.type === 'totalsBlock' && !showTotals) return null
+        // itemList with no items on a non-first page = the totals-only overflow page; hide it
+        if (el.type === 'itemList' && doc.data.items.length === 0 && !isFirstPage) return null
         return (
           <div key={el.id} style={{ zIndex: el.zIndex, position: 'relative' }}>
-            {renderElement(el, doc, totals, currentPage, totalPages)}
+            {renderElement(el, doc, totals, currentPage, totalPages, showColumnHeader)}
           </div>
         )
       })}
@@ -112,6 +124,7 @@ function renderElement(
   totals: TotalsResult,
   currentPage: number,
   totalPages: number,
+  showColumnHeader = true,
 ): React.ReactNode {
   const { data } = doc
   const meta = data.meta
@@ -147,6 +160,7 @@ function renderElement(
           element={el}
           items={data.items}
           currency={data.totalsConfig.currency}
+          showHeader={showColumnHeader}
         />
       )
 

@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Printer } from 'lucide-react'
+import { ArrowLeft, Printer, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { downloadPdf } from '@/services/pdfExport'
 import { PageCanvas } from '@/components/canvas/PageCanvas'
 import { FillModeProvider } from '@/components/fill-mode/FillModeContext'
 import { useAppSelector } from '@/hooks/useAppDispatch'
@@ -46,9 +47,13 @@ export default function PreviewPage() {
             </Button>
             <span className="font-medium text-sm">{doc.data.meta.number}</span>
             <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => downloadPdf(doc)}>
+                <Download className="size-4 mr-2" />
+                Download PDF
+              </Button>
               <Button variant="outline" size="sm" onClick={() => window.print()}>
                 <Printer className="size-4 mr-2" />
-                Print / PDF
+                Print
               </Button>
             </div>
           </div>

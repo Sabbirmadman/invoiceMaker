@@ -1,19 +1,32 @@
 import type { StoredDocument, TotalsResult } from '@/types/document'
 import { PAGE_DIMENSIONS } from '@/types/common'
 import { SectionRenderer, BodySectionRenderer } from './SectionRenderer'
+import type { PageSlice } from '@/hooks/usePagination'
 
 interface Props {
   doc: StoredDocument
   totals: TotalsResult
   pageNumber: number
   totalPages: number
+  slice?: PageSlice   // when provided, only render items in this slice
   zoom?: number
 }
 
-export function CanvasPage({ doc, totals, pageNumber, totalPages, zoom = 1 }: Props) {
+export function CanvasPage({ doc, totals, pageNumber, totalPages, slice, zoom = 1 }: Props) {
   const { templateSnapshot } = doc
   const { pageSize, header, body, footer } = templateSnapshot
   const dims = PAGE_DIMENSIONS[pageSize]
+
+  // Build a scoped doc for this page that only contains the items for this slice
+  const pageDoc: StoredDocument = slice
+    ? {
+        ...doc,
+        data: {
+          ...doc.data,
+          items: doc.data.items.slice(slice.itemStartIndex, slice.itemEndIndex),
+        },
+      }
+    : doc
 
   return (
     <div
@@ -28,10 +41,7 @@ export function CanvasPage({ doc, totals, pageNumber, totalPages, zoom = 1 }: Pr
     >
       {/* Header */}
       {header.visible && (
-        <div
-          className="border-b border-border"
-          style={{ height: header.height }}
-        >
+        <div className="border-b border-border" style={{ height: header.height }}>
           <SectionRenderer
             section={header}
             doc={doc}
@@ -45,15 +55,22 @@ export function CanvasPage({ doc, totals, pageNumber, totalPages, zoom = 1 }: Pr
       {/* Body */}
       <div
         style={{
-          minHeight: dims.height - (header.visible ? header.height : 0) - (footer.visible ? footer.height : 0),
+          height:
+            dims.height -
+            (header.visible ? header.height : 0) -
+            (footer.visible ? footer.height : 0),
+          overflow: 'hidden',
         }}
       >
         <BodySectionRenderer
           section={body}
-          doc={doc}
+          doc={pageDoc}
           totals={totals}
           currentPage={pageNumber}
           totalPages={totalPages}
+          showTotals={slice ? slice.showTotals : true}
+          showColumnHeader={slice ? slice.showColumnHeader : true}
+          isFirstPage={pageNumber === 1}
         />
       </div>
 
