@@ -60,6 +60,8 @@ export function CanvasPage({ doc, totals, pageNumber, totalPages, slice, zoom = 
             (header.visible ? header.height : 0) -
             (footer.visible ? footer.height : 0),
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         <BodySectionRenderer

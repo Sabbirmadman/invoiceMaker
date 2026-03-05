@@ -1,6 +1,16 @@
 import { forwardRef } from 'react'
-import type { StoredDocument } from '@/types/document'
-import { formatCurrency, calculateLineAmount } from '@/services/calculations'
+import type { StoredDocument, TotalsResult } from '@/types/document'
+import { formatCurrency, calculateLineAmount, calculateTotals } from '@/services/calculations'
+import type { TemplateElement } from '@/types/template'
+import { TotalsBlockElement } from '@/components/elements/TotalsBlockElement'
+import { NotesElement } from '@/components/elements/NotesElement'
+import { TermsElement } from '@/components/elements/TermsElement'
+import { DividerElement } from '@/components/elements/DividerElement'
+import { TextLabelElement } from '@/components/elements/TextLabelElement'
+import { PageNumberElement } from '@/components/elements/PageNumberElement'
+
+// Must match the constant in SectionRenderer
+const PRE_TABLE_TYPES = new Set(['watermark', 'billTo', 'shipTo', 'itemList'])
 
 interface Props {
   doc: StoredDocument
@@ -14,6 +24,10 @@ interface Props {
 export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc }, ref) => {
   const { data, templateSnapshot } = doc
   const pageWidth = templateSnapshot.pageSize === 'A4' ? 794 : 816
+  const totals = calculateTotals(data.items, data.totalsConfig)
+  const postTableElements = [...templateSnapshot.body.elements]
+    .filter((el) => !PRE_TABLE_TYPES.has(el.type))
+    .sort((a, b) => a.zIndex - b.zIndex)
 
   return (
     <div
@@ -84,25 +98,36 @@ export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc }, ref)
         )
       })}
 
-      {/* Totals block — paddingTop: 16 captures the gap-4 between itemList and totalsBlock */}
-      <div data-totals-block style={{ paddingTop: 16 }} className="flex justify-end min-w-64">
-        <div className="min-w-64 text-sm">
-          <div className="flex justify-between gap-8 py-1 border-b">
-            <span>Sub Total</span><span>$0.00</span>
-          </div>
-          <div className="flex justify-between gap-8 py-1 border-b">
-            <span>Tax</span><span>$0.00</span>
-          </div>
-          <div className="flex justify-between gap-8 py-1 border-b font-semibold text-base">
-            <span>Total</span><span>$0.00</span>
-          </div>
-          <div className="flex justify-between gap-8 py-1 font-semibold text-base">
-            <span>Balance Due</span><span>$0.00</span>
-          </div>
-        </div>
+      {/* Post-table elements — measured as a combined unit (paddingTop = gap-4 above first element) */}
+      <div data-post-table style={{ paddingTop: 16 }} className="flex flex-col gap-4">
+        {postTableElements.map((el) => renderPostTableElement(el, doc, totals))}
       </div>
     </div>
   )
 })
 
 MeasureContainer.displayName = 'MeasureContainer'
+
+function renderPostTableElement(
+  el: TemplateElement,
+  doc: StoredDocument,
+  totals: TotalsResult,
+): React.ReactNode {
+  const { data } = doc
+  switch (el.type) {
+    case 'totalsBlock':
+      return <TotalsBlockElement key={el.id} element={el} totals={totals} config={data.totalsConfig} />
+    case 'notes':
+      return <NotesElement key={el.id} element={el} notes={data.notes} />
+    case 'termsConditions':
+      return <TermsElement key={el.id} element={el} terms={data.terms} />
+    case 'divider':
+      return <DividerElement key={el.id} element={el} />
+    case 'textLabel':
+      return <TextLabelElement key={el.id} element={el} />
+    case 'pageNumber':
+      return <PageNumberElement key={el.id} element={el} current={1} total={1} />
+    default:
+      return null
+  }
+}

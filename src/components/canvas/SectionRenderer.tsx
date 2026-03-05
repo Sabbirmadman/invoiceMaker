@@ -84,6 +84,9 @@ interface BodySectionRendererProps {
   isFirstPage?: boolean
 }
 
+// Elements that flow before/with the item table (not gated to last page only)
+const PRE_TABLE_TYPES = new Set(['watermark', 'billTo', 'shipTo', 'itemList'])
+
 export function BodySectionRenderer({
   section,
   doc,
@@ -97,23 +100,43 @@ export function BodySectionRenderer({
   const sorted = [...section.elements].sort((a, b) => a.zIndex - b.zIndex)
 
   return (
-    <div className="relative flex flex-col gap-4 p-4">
-      {sorted.map((el) => {
-        if (el.type === 'watermark') {
-          return <WatermarkElement key={el.id} element={el} />
-        }
-        // billTo and shipTo only appear on first page
-        if ((el.type === 'billTo' || el.type === 'shipTo') && !isFirstPage) return null
-        // totalsBlock only on last page (showTotals flag)
-        if (el.type === 'totalsBlock' && !showTotals) return null
-        // itemList with no items on a non-first page = the totals-only overflow page; hide it
-        if (el.type === 'itemList' && doc.data.items.length === 0 && !isFirstPage) return null
-        return (
-          <div key={el.id} style={{ zIndex: el.zIndex, position: 'relative' }}>
-            {renderElement(el, doc, totals, currentPage, totalPages, showColumnHeader)}
-          </div>
-        )
-      })}
+    <div className="relative flex flex-col h-full p-4 overflow-hidden">
+      {/* Watermarks — absolute-positioned, render on every page */}
+      {sorted.filter((el) => el.type === 'watermark').map((el) => (
+        <WatermarkElement key={el.id} element={el} />
+      ))}
+
+      {/* Pre-table group: billTo/shipTo (first page), itemList */}
+      <div className="flex flex-col gap-4">
+        {sorted.map((el) => {
+          if (el.type === 'watermark') return null
+          if (!PRE_TABLE_TYPES.has(el.type)) return null
+          if ((el.type === 'billTo' || el.type === 'shipTo') && !isFirstPage) return null
+          if (el.type === 'itemList' && doc.data.items.length === 0 && !isFirstPage) return null
+          return (
+            <div key={el.id} style={{ zIndex: el.zIndex, position: 'relative' }}>
+              {renderElement(el, doc, totals, currentPage, totalPages, showColumnHeader)}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Spacer — pushes post-table content to the bottom of the body area */}
+      <div className="flex-1 min-h-0" />
+
+      {/* Post-table group: totalsBlock, notes, terms, etc. — last page only */}
+      {showTotals && (
+        <div className="flex flex-col gap-4">
+          {sorted.map((el) => {
+            if (PRE_TABLE_TYPES.has(el.type)) return null
+            return (
+              <div key={el.id} style={{ zIndex: el.zIndex, position: 'relative' }}>
+                {renderElement(el, doc, totals, currentPage, totalPages, showColumnHeader)}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

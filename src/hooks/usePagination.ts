@@ -18,7 +18,7 @@ interface PaginationResult {
 }
 
 const COLUMN_HEADER_HEIGHT = 36   // px — fallback estimate
-const TOTALS_BLOCK_HEIGHT = 196   // px — fallback: content + 16px gap above it
+const POST_TABLE_HEIGHT = 196     // px — fallback: totals + gap above it
 const ABOVE_TABLE_HEIGHT = 140    // px — fallback: bill-to content + 16px gap below it
 const BODY_PADDING = 32           // 16px top + 16px bottom from BodySectionRenderer
 
@@ -31,6 +31,9 @@ export function usePagination(doc: StoredDocument): PaginationResult {
   const footerH = footer.visible ? footer.height : 0
   const availableH = dims.height - headerH - footerH - BODY_PADDING
 
+  const itemListEl = templateSnapshot.body.elements.find((el) => el.type === 'itemList')
+  const maxRowsPerPage = (itemListEl?.config?.maxRowsPerPage as number) ?? 0
+
   const measureRef = useRef<HTMLDivElement | null>(null)
   const [pages, setPages] = useState<PageSlice[]>([])
   const [ready, setReady] = useState(false)
@@ -40,13 +43,13 @@ export function usePagination(doc: StoredDocument): PaginationResult {
     if (!container) return
 
     const rowEls = Array.from(container.querySelectorAll<HTMLElement>('[data-row-index]'))
-    const totalsEl = container.querySelector<HTMLElement>('[data-totals-block]')
+    const postTableEl = container.querySelector<HTMLElement>('[data-post-table]')
     const colHeaderEl = container.querySelector<HTMLElement>('[data-col-header]')
     const aboveTableEl = container.querySelector<HTMLElement>('[data-above-table]')
 
     const colHeaderH = colHeaderEl?.offsetHeight ?? COLUMN_HEADER_HEIGHT
-    // totalsH includes the 16px gap-4 before the totals block (measured via paddingTop on data-totals-block)
-    const totalsH = totalsEl?.offsetHeight ?? TOTALS_BLOCK_HEIGHT
+    // postTableH includes the 16px paddingTop gap before the first post-table element
+    const postTableH = postTableEl?.offsetHeight ?? POST_TABLE_HEIGHT
     // aboveTableH includes the 16px gap-4 after bill-to (measured via paddingBottom on data-above-table)
     const aboveTableH = aboveTableEl?.offsetHeight ?? ABOVE_TABLE_HEIGHT
 
@@ -67,7 +70,7 @@ export function usePagination(doc: StoredDocument): PaginationResult {
       if (i === data.items.length) {
         // All items placed — now place totals
         const remainingSpace = availableH - used
-        if (remainingSpace >= totalsH) {
+        if (remainingSpace >= postTableH) {
           // Totals fit on current page
           result.push({
             pageIndex: currentPage,
@@ -98,12 +101,14 @@ export function usePagination(doc: StoredDocument): PaginationResult {
       }
 
       const rowH = rowHeights[i] ?? 40
+      const rowsOnPage = i - pageItemStart
+      const forceBreak = maxRowsPerPage > 0 && rowsOnPage >= maxRowsPerPage
 
-      if (used + rowH <= availableH) {
+      if (!forceBreak && used + rowH <= availableH) {
         used += rowH
         i++
       } else {
-        // Row doesn't fit — close current page, start new one
+        // Row doesn't fit (or max rows per page reached) — close current page, start new one
         result.push({
           pageIndex: currentPage,
           itemStartIndex: pageItemStart,
@@ -114,8 +119,8 @@ export function usePagination(doc: StoredDocument): PaginationResult {
         currentPage++
         used = colHeaderH  // new page: itemList is first element, no gap before it
         pageItemStart = i
-        // Edge case: single row taller than page — force it through anyway
-        if (rowH > availableH) {
+        // Edge case: single row taller than page — force it through anyway (size overflow only)
+        if (!forceBreak && rowH > availableH) {
           used += rowH
           i++
         }
@@ -135,7 +140,7 @@ export function usePagination(doc: StoredDocument): PaginationResult {
 
     setPages(result)
     setReady(true)
-  }, [data.items, availableH])
+  }, [data.items, availableH, maxRowsPerPage])
 
   useEffect(() => {
     // Don't reset ready — keep current layout visible while recomputing to avoid flash

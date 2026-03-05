@@ -13,7 +13,7 @@ interface Props {
 
 const DEFAULT_COLUMNS = ['name', 'description', 'qty', 'rate', 'tax', 'amount']
 
-type ColKey = 'name' | 'description' | 'qty' | 'unit' | 'rate' | 'discount' | 'tax' | 'amount'
+export type ColKey = 'name' | 'description' | 'qty' | 'unit' | 'rate' | 'discount' | 'tax' | 'amount'
 
 const COLUMN_LABELS: Record<ColKey, string> = {
   name: 'Item',

@@ -182,10 +182,22 @@ const documentsSlice = createSlice({
     deleteDocument(state, action: PayloadAction<string>) {
       state.documents = state.documents.filter((d) => d.id !== action.payload)
     },
+
+    updateItemListConfig(
+      state,
+      action: PayloadAction<{ id: string; config: Record<string, unknown> }>,
+    ) {
+      const doc = state.documents.find((d) => d.id === action.payload.id)
+      if (!doc) return
+      const itemListEl = doc.templateSnapshot.body.elements.find((el) => el.type === 'itemList')
+      if (!itemListEl) return
+      itemListEl.config = { ...itemListEl.config, ...action.payload.config }
+      doc.updatedAt = new Date().toISOString()
+    },
   },
 })
 
-export const { createDocument, updateDocument, duplicateDocument, deleteDocument } =
+export const { createDocument, updateDocument, duplicateDocument, deleteDocument, updateItemListConfig } =
   documentsSlice.actions
 
 export default documentsSlice.reducer

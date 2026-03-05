@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button'
 import { downloadPdf } from '@/services/pdfExport'
 import { PageCanvas } from '@/components/canvas/PageCanvas'
 import { useAppSelector, useAppDispatch } from '@/hooks/useAppDispatch'
-import { updateDocument } from '@/store/slices/documentsSlice'
+import { updateDocument, updateItemListConfig } from '@/store/slices/documentsSlice'
 import { FillModeProvider } from '@/components/fill-mode/FillModeContext'
+import { TableSettingsPanel } from '@/components/fill-mode/TableSettingsPanel'
 import type { CompanyData, ClientData, InvoiceMeta, EstimateMeta, ReceiptMeta, LineItem, TotalsConfig, DocumentData } from '@/types/document'
 
 export default function FillModePage() {
@@ -85,9 +86,15 @@ export default function FillModePage() {
           </div>
         </header>
 
-        {/* Canvas */}
-        <div className="flex-1 overflow-auto">
-          <PageCanvas doc={doc} zoom={0.9} />
+        {/* Canvas + settings sidebar */}
+        <div className="flex-1 overflow-hidden flex">
+          <div className="flex-1 overflow-auto">
+            <PageCanvas doc={doc} zoom={0.9} />
+          </div>
+          <TableSettingsPanel
+            doc={doc}
+            onUpdateConfig={(config) => dispatch(updateItemListConfig({ id: id!, config }))}
+          />
         </div>
       </div>
     </FillModeProvider>
