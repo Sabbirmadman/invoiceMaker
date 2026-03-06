@@ -41,7 +41,7 @@ export function InlineField({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         rows={3}
-        className={`w-full bg-transparent border border-transparent hover:border-blue-300 focus:border-blue-500 focus:outline-none rounded px-1 resize-none transition-colors ${className}`}
+        className={`w-full bg-transparent outline-1 outline-transparent hover:outline-blue-300 focus:outline-blue-500 leading-[inherit] resize-none transition-colors ${className}`}
       />
     )
   }
@@ -54,7 +54,7 @@ export function InlineField({
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={handleKeyDown}
       placeholder={placeholder}
-      className={`w-full bg-transparent border border-transparent hover:border-blue-300 focus:border-blue-500 focus:outline-none rounded px-1 transition-colors ${className}`}
+      className={`w-full bg-transparent outline-1 outline-transparent hover:outline-blue-300 focus:outline-blue-500 leading-[inherit] transition-colors ${className}`}
     />
   )
 }

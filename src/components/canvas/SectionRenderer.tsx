@@ -1,5 +1,5 @@
 import type { Section, BodySection, TemplateElement } from '@/types/template'
-import type { StoredDocument, TotalsResult } from '@/types/document'
+import type { StoredDocument, TotalsResult, LineItem } from '@/types/document'
 import { GridLayout, GridCell } from './GridLayout'
 import { LogoElement } from '@/components/elements/LogoElement'
 import { CompanyDetailsElement } from '@/components/elements/CompanyDetailsElement'
@@ -82,6 +82,9 @@ interface BodySectionRendererProps {
   showTotals?: boolean
   showColumnHeader?: boolean
   isFirstPage?: boolean
+  itemOffset?: number
+  isLastPage?: boolean
+  allItems?: LineItem[]
 }
 
 // Elements that flow before/with the item table (not gated to last page only)
@@ -96,11 +99,14 @@ export function BodySectionRenderer({
   showTotals = true,
   showColumnHeader = true,
   isFirstPage = true,
+  itemOffset = 0,
+  isLastPage = true,
+  allItems,
 }: BodySectionRendererProps) {
   const sorted = [...section.elements].sort((a, b) => a.zIndex - b.zIndex)
 
   return (
-    <div className="relative flex flex-col h-full p-4 overflow-hidden">
+    <div className="relative flex flex-col p-4 overflow-hidden">
       {/* Watermarks — absolute-positioned, render on every page */}
       {sorted.filter((el) => el.type === 'watermark').map((el) => (
         <WatermarkElement key={el.id} element={el} />
@@ -115,23 +121,20 @@ export function BodySectionRenderer({
           if (el.type === 'itemList' && doc.data.items.length === 0 && !isFirstPage) return null
           return (
             <div key={el.id} style={{ zIndex: el.zIndex, position: 'relative' }}>
-              {renderElement(el, doc, totals, currentPage, totalPages, showColumnHeader)}
+              {renderElement(el, doc, totals, currentPage, totalPages, showColumnHeader, itemOffset, isLastPage, allItems)}
             </div>
           )
         })}
       </div>
 
-      {/* Spacer — pushes post-table content to the bottom of the body area */}
-      <div className="flex-1 min-h-0" />
-
       {/* Post-table group: totalsBlock, notes, terms, etc. — last page only */}
       {showTotals && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 mt-4">
           {sorted.map((el) => {
             if (PRE_TABLE_TYPES.has(el.type)) return null
             return (
               <div key={el.id} style={{ zIndex: el.zIndex, position: 'relative' }}>
-                {renderElement(el, doc, totals, currentPage, totalPages, showColumnHeader)}
+                {renderElement(el, doc, totals, currentPage, totalPages, showColumnHeader, itemOffset, isLastPage, allItems)}
               </div>
             )
           })}
@@ -148,6 +151,9 @@ function renderElement(
   currentPage: number,
   totalPages: number,
   showColumnHeader = true,
+  itemOffset = 0,
+  isLastPage = true,
+  allItems?: LineItem[],
 ): React.ReactNode {
   const { data } = doc
   const meta = data.meta
@@ -182,8 +188,11 @@ function renderElement(
         <ItemListElement
           element={el}
           items={data.items}
+          allItems={allItems}
           currency={data.totalsConfig.currency}
           showHeader={showColumnHeader}
+          itemOffset={itemOffset}
+          isLastPage={isLastPage}
         />
       )
 

@@ -270,39 +270,81 @@ On new page creation:
 
 ## Pagination Algorithm
 
+### Implementation (`src/hooks/usePagination.ts`)
+
+All measurements are performed via DOM (`offsetHeight`) in a hidden `MeasureContainer`
+that is rendered off-screen at the exact page width.
+
 ```
-1. Calculate available body height per page:
-   availableHeight = pageHeight - headerHeight - footerHeight
+Constants:
+  BODY_PADDING = 32  (16px top + 16px bottom from BodySectionRenderer's p-4)
 
-2. Page 1 initialisation:
-   currentPage = 1
-   currentPageUsed = bodyContentAboveItems  ← e.g. Bill To block height
-   Render column header row → currentPageUsed += columnHeaderHeight
+availableH = pageHeight - headerHeight - footerHeight - BODY_PADDING
 
-3. For each item row:
-   a. Measure rendered height of row
-   b. If (currentPageUsed + rowHeight) <= availableHeight:
-      → Add row to current page
-      → currentPageUsed += rowHeight
-   c. Else:
-      → Start new page, currentPage++
-      → currentPageUsed = columnHeaderHeight  ← repeat column header on new page
-      → Add row to new page
-      → currentPageUsed += rowHeight
+MeasureContainer renders:
+  [data-above-table]  — Bill To block (all 7 fields always rendered)
+  [data-col-header]   — item table column header row
+  [data-row-N]        — each item row
+  [data-post-table]   — totals block
 
-4. After all items are placed:
-   a. Measure totals block height
-   b. If (currentPageUsed + totalsHeight) <= availableHeight:
-      → Render totals on current (last) page
-   c. Else:
-      → Start new page, render totals at top (no column header needed on totals page)
+Pagination steps:
+  1. aboveTableH = measure [data-above-table].offsetHeight
+     colHeaderH  = measure [data-col-header].offsetHeight
+     rowHeights  = measure each [data-row-N].offsetHeight
+     totalsH     = measure [data-post-table].offsetHeight
 
-5. Edge case — totals block alone taller than availableHeight:
-   → Render on its own page, allow internal scroll (do not loop)
+  2. Page 1 initialisation:
+     pageUsed = aboveTableH + colHeaderH
+     slice = { pageIndex:0, itemStartIndex:0 }
 
-6. Edge case — single item row taller than availableHeight:
-   → Place on its own page, do not split the row
+  3. For each item row i:
+     if (pageUsed + rowHeights[i]) <= availableH:
+       pageUsed += rowHeights[i]
+     else:
+       close current slice (itemEndIndex = i, showTotals=false, showColumnHeader depends)
+       start new page: pageUsed = colHeaderH
+       add row to new page: pageUsed += rowHeights[i]
+
+  4. Close last item page:
+     if (pageUsed + totalsH) <= availableH:
+       → showTotals = true on last page
+     else:
+       → close last item page (showTotals=false)
+       → add totals-only page (showTotals=true, showColumnHeader=false)
+
+  5. Edge cases:
+     - Single row taller than availableH → placed on its own page
+     - Empty item list → single page with totals only
+     - Totals taller than availableH → rendered on their own page
 ```
+
+### Reactive Re-pagination
+
+`usePagination` attaches a `ResizeObserver` to `[data-above-table]` and `[data-post-table]`
+inside `MeasureContainer`. Any size change (user typing, adding rows, resizing)
+triggers an immediate re-computation via `requestAnimationFrame`.
+
+### Boundary Guide Lines
+
+`CanvasPage` renders two dashed blue lines in fill mode only:
+- **Header boundary** — at `headerHeight + 16px` from page top
+- **Footer boundary** — at `pageHeight - footerHeight - 16px` from page top
+
+These lines correspond exactly to the top and bottom of `availableH`, giving the user
+a visual indication of where pagination will break.
+
+### Multi-Page Item Context
+
+To correctly handle item mutations across pages, three props are threaded through
+`CanvasPage → BodySectionRenderer → ItemListElement`:
+
+| Prop | Type | Purpose |
+|---|---|---|
+| `allItems` | `LineItem[]` | Full unsliced item list; mutations always target this |
+| `itemOffset` | `number` | Global start index of this page's slice (`itemStartIndex`) |
+| `isLastPage` | `boolean` | Whether this slice is the last; controls "Add Row" visibility |
+
+Row numbers display as `itemOffset + localIndex + 1` to remain globally sequential.
 
 ---
 
@@ -320,7 +362,7 @@ In Fill mode, the template layout is locked. The user clicks directly on compone
 
 | Component | Inline behaviour |
 |---|---|
-| Logo | Click → file upload dialog |
+| Logo | Click (input overlay) or drag-and-drop → file upload; hover × button removes logo |
 | Company Details | Click → inline text editor per field (name, address, etc.) |
 | Bill To / Ship To | Click → inline text editor per field |
 | Invoice Details | Click each field (number, date, terms) → inline input |
@@ -330,12 +372,12 @@ In Fill mode, the template layout is locked. The user clicks directly on compone
 | Terms & Conditions | Click → inline textarea |
 
 Rules for inline editing:
-- Selected component gets a subtle highlight border (not a heavy editor chrome)
-- Tab key moves to the next editable field in reading order
-- Enter confirms and deselects
-- Escape cancels and reverts
+- `InlineField` uses CSS `outline` (not `border`) for focus highlight — does not affect box height, so fill mode layout matches preview exactly
+- Enter confirms (single-line fields); Escape blurs
 - Item list rows auto-expand height as text grows
-- Canvas re-paginates live as content changes (item list grows → new pages appear)
+- Canvas re-paginates live as content changes (item list grows → new pages appear automatically via ResizeObserver)
+- Tab key navigation between fields — not yet implemented
+- Escape to revert — not yet implemented
 
 ---
 

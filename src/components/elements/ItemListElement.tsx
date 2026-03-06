@@ -6,9 +6,12 @@ import { Trash2, Plus } from 'lucide-react'
 
 interface Props {
   element: TemplateElement
-  items: LineItem[]
+  items: LineItem[]       // sliced items for this page (display only)
+  allItems?: LineItem[]   // full unsliced list — used for mutations
   currency?: string
   showHeader?: boolean
+  itemOffset?: number     // global index of first item in this slice (for row numbering)
+  isLastPage?: boolean    // show Add Row button only on the last items page
 }
 
 const DEFAULT_COLUMNS = ['name', 'description', 'qty', 'rate', 'tax', 'amount']
@@ -52,16 +55,18 @@ function newItem(): LineItem {
   }
 }
 
-export function ItemListElement({ element, items, currency = 'USD', showHeader = true }: Props) {
+export function ItemListElement({ element, items, allItems, currency = 'USD', showHeader = true, itemOffset = 0, isLastPage = true }: Props) {
   const { fillMode, onUpdateItems } = useFillMode()
   const columns = (element.config?.columns as ColKey[]) ?? DEFAULT_COLUMNS
   const headerBg = element.styles?.headerBackground ?? '#111111'
   const headerColor = element.styles?.headerColor ?? '#ffffff'
   const altRowColor = element.styles?.alternateRowColor ?? '#f9fafb'
+  const full = allItems ?? items  // full list for mutations
 
   function updateItem(idx: number, patch: Partial<LineItem>) {
-    const updated = items.map((item, i) => {
-      if (i !== idx) return item
+    const globalIdx = itemOffset + idx
+    const updated = full.map((item, i) => {
+      if (i !== globalIdx) return item
       const merged = { ...item, ...patch }
       merged.amount = calculateLineAmount(merged)
       return merged
@@ -70,11 +75,12 @@ export function ItemListElement({ element, items, currency = 'USD', showHeader =
   }
 
   function addItem() {
-    onUpdateItems([...items, newItem()])
+    onUpdateItems([...full, newItem()])
   }
 
   function removeItem(idx: number) {
-    onUpdateItems(items.filter((_, i) => i !== idx))
+    const globalIdx = itemOffset + idx
+    onUpdateItems(full.filter((_, i) => i !== globalIdx))
   }
 
   return (
@@ -108,7 +114,7 @@ export function ItemListElement({ element, items, currency = 'USD', showHeader =
                 <Trash2 className="size-3" />
               </button>
             )}
-            <div className="w-8 px-3 py-2 text-muted-foreground shrink-0">{idx + 1}</div>
+            <div className="w-8 px-3 py-2 text-muted-foreground shrink-0">{itemOffset + idx + 1}</div>
             {columns.map((col) => (
               <div key={col} className={`flex-1 px-2 py-1 ${COLUMN_ALIGN[col]}`}>
                 {fillMode && col !== 'amount'
@@ -120,7 +126,7 @@ export function ItemListElement({ element, items, currency = 'USD', showHeader =
         ))
       )}
 
-      {fillMode && (
+      {fillMode && isLastPage && (
         <button
           onClick={addItem}
           className="flex items-center gap-2 mt-2 px-3 py-1.5 text-sm text-primary hover:bg-primary/10 rounded transition-colors"

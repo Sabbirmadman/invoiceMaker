@@ -43,21 +43,23 @@ export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc }, ref)
         zIndex: -1,
       }}
     >
-      {/* Bill-to block — measured to get accurate page 1 pre-table height.
+      {/* Bill-to block — must match BillToElement fill-mode layout exactly.
+          Fill mode always renders all 7 InlineField rows regardless of whether
+          they have values, so we do the same here with matching input elements.
           paddingBottom: 16 captures the gap-4 between billTo and itemList. */}
-      <div data-above-table style={{ paddingBottom: 16 }}>
+      <div data-above-table className="text-sm leading-relaxed" style={{ paddingBottom: 16 }}>
         <div className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1">Bill To</div>
-        {data.client.name && <div className="font-semibold text-sm">{data.client.name}</div>}
-        {data.client.company && <div className="text-sm">{data.client.company}</div>}
-        {data.client.address && <div className="text-sm">{data.client.address}</div>}
-        {(data.client.city || data.client.state || data.client.zip) && (
-          <div className="text-sm">
-            {[data.client.city, data.client.state, data.client.zip].filter(Boolean).join(', ')}
-          </div>
-        )}
-        {data.client.country && <div className="text-sm">{data.client.country}</div>}
-        {data.client.phone && <div className="text-sm">{data.client.phone}</div>}
-        {data.client.email && <div className="text-sm">{data.client.email}</div>}
+        <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.name} placeholder="Client Name" />
+        <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.company} placeholder="Company" />
+        <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.address} placeholder="Address" />
+        <div className="flex gap-1">
+          <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.city} placeholder="City" />
+          <input readOnly className="w-16 bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.state} placeholder="State" />
+          <input readOnly className="w-20 bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.zip} placeholder="ZIP" />
+        </div>
+        <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.country} placeholder="Country" />
+        <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.phone} placeholder="Phone" />
+        <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.email} placeholder="Email" />
       </div>
 
       {/* Column header — measured to know how much space to reserve per new page */}

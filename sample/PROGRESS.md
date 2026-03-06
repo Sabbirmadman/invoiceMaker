@@ -1,6 +1,6 @@
 # Invoice Maker — Implementation Progress
 
-> Last updated: 2026-03-05
+> Last updated: 2026-03-07 (session 2)
 
 ---
 
@@ -48,7 +48,7 @@
 ## Phase 5 — Canvas Renderer
 
 ### Element Components
-- [x] LogoElement — company logo display + upload in fill mode
+- [x] LogoElement — company logo display + click-to-upload + drag-and-drop in fill mode; hover × button to remove
 - [x] CompanyDetailsElement — name, address, phone, email, tax ID
 - [x] InvoiceDetailsElement — number, date, due date, terms, PO#, project
 - [x] EstimateDetailsElement — number, date, expiry date, reference
@@ -73,9 +73,11 @@
 ### Canvas Infrastructure
 - [x] PageCanvas — root canvas, pagination driver
 - [x] CanvasPage — renders a single paginated page with header/body/footer
-- [x] SectionRenderer — renders a section's grid + elements
+- [x] CanvasPage — visual boundary guide lines (dashed blue) below header and above footer, fill mode only
+- [x] SectionRenderer — renders a section's grid + elements; natural-flow layout (no flex-1 spacer)
+- [x] SectionRenderer — item slice context (`itemOffset`, `isLastPage`, `allItems`) threaded through for multi-page correctness
 - [x] GridLayout — CSS grid from template column/row definitions
-- [x] MeasureContainer — hidden off-screen DOM measurement for pagination
+- [x] MeasureContainer — hidden off-screen DOM measurement for pagination; bill-to always renders all 7 fields; input classes match InlineField (outline, no border)
 
 ---
 
@@ -83,16 +85,17 @@
 
 ### Fill Mode Inline Editing
 - [x] FillModeContext — context provider, no prop drilling
-- [x] InlineField — click-to-edit input/textarea component
+- [x] InlineField — click-to-edit input/textarea; uses `outline` (not `border`) so it doesn't affect layout height; matches preview size
 - [x] Company details inline editing
 - [x] Client / Bill To inline editing
 - [x] Invoice / Estimate / Receipt meta inline editing
 - [x] Item list cell editing (inline per-cell input)
-- [x] Item list add row / remove row
+- [x] Item list add row (last page only) / remove row; row numbers global across pages
+- [x] Item list mutations always operate on the full item list (`allItems`), not the page slice
 - [x] Totals config editing (tax rates, labels, shipping, adjustment, amount paid)
 - [x] Notes inline editing
 - [x] Terms inline editing
-- [x] Logo file upload
+- [x] Logo upload — click (input overlay) + drag-and-drop; hover × button to remove
 - [x] Auto-save indicator ("Auto-saved")
 - [ ] Tab key navigation between fields in reading order
 - [ ] Escape to cancel and revert
@@ -113,11 +116,13 @@
 - [x] Totals block height measured via DOM
 - [x] Rows never split across pages
 - [x] Column header repeats on every new page
-- [x] Totals always on last page
+- [x] Totals always on last page (natural flow — no flex-1 spacer)
 - [x] Totals overflow to a new page if they don't fit
 - [x] Edge case: single row taller than page — placed on own page
 - [x] Edge case: empty item list — single page with totals shown
 - [x] Live re-pagination as content changes
+- [x] `ResizeObserver` on `[data-above-table]` and `[data-post-table]` — auto re-paginate when DOM sizes change
+- [x] Boundary guide lines (dashed blue) rendered in fill mode at exact header/footer boundaries
 
 ---
 
@@ -205,9 +210,9 @@ The visual template editor is **not yet started**. All features below are pendin
 | Phase 2 — Types & Services | Complete |
 | Phase 3 — Document List | Complete |
 | Phase 4 — Template Picker | Complete |
-| Phase 5 — Canvas Renderer | Mostly complete (6 element types missing) |
-| Phase 6 — Fill Mode & Preview | Mostly complete (tab navigation pending) |
-| Phase 7 — Pagination Engine | Complete |
+| Phase 5 — Canvas Renderer | Mostly complete (5 element types missing; logo ✓) |
+| Phase 6 — Fill Mode & Preview | Mostly complete (tab navigation pending; logo upload ✓, InlineField flattened ✓) |
+| Phase 7 — Pagination Engine | Complete + ResizeObserver reactive, boundary guide lines, natural flow |
 | Phase 8 — Built-in Templates | Partial (4 of 6 templates done) |
 | Phase 9 — PDF Export | Basic (simplified layout, no logo, no template-faithful output) |
 | Editor Mode | Not started |

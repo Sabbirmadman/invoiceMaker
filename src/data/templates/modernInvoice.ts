@@ -31,7 +31,7 @@ export const modernInvoice: Template = {
       {
         id: 'el_logo',
         type: 'logo',
-        zIndex: 3,
+        zIndex: 5,
         gridArea: { col: 'col_left', row: 'row_1' },
         styles: { maxHeight: '60px' },
       },

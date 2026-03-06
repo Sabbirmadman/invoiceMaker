@@ -31,7 +31,7 @@ export const classicInvoice: Template = {
       {
         id: 'el_logo',
         type: 'logo',
-        zIndex: 3,
+        zIndex: 5,
         gridArea: { col: 'col_left', row: 'row_1' },
         styles: { maxHeight: '80px' },
       },
@@ -99,7 +99,7 @@ export const classicInvoice: Template = {
         type: 'totalsBlock',
         zIndex: 3,
         config: {
-          show: ['subTotal', 'discount', 'tax1', 'tax2', 'shipping', 'adjustment', 'total', 'amountPaid', 'balanceDue'],
+          show: ['subTotal', 'discount', 'tax1', 'total', 'balanceDue'],
         },
       },
     ],

@@ -143,11 +143,30 @@ export function usePagination(doc: StoredDocument): PaginationResult {
   }, [data.items, availableH, maxRowsPerPage])
 
   useEffect(() => {
-    // Don't reset ready — keep current layout visible while recomputing to avoid flash
+    // Initial computation — schedule after paint so DOM is laid out
     const frame = requestAnimationFrame(() => {
       compute()
     })
-    return () => cancelAnimationFrame(frame)
+
+    // Watch all measured sections for size changes so pagination stays accurate:
+    // - data-above-table: bill-to content changes height as client fields are filled
+    // - data-post-table: totals config, notes text, etc. change post-table height
+    const container = measureRef.current
+    let observer: ResizeObserver | null = null
+    if (container && typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => {
+        compute()
+      })
+      const aboveTableEl = container.querySelector<HTMLElement>('[data-above-table]')
+      const postTableEl = container.querySelector<HTMLElement>('[data-post-table]')
+      if (aboveTableEl) observer.observe(aboveTableEl)
+      if (postTableEl) observer.observe(postTableEl)
+    }
+
+    return () => {
+      cancelAnimationFrame(frame)
+      observer?.disconnect()
+    }
   }, [compute])
 
   const totalPages = Math.max(pages.length, 1)
