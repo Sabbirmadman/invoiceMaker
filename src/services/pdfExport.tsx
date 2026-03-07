@@ -1,26 +1,25 @@
-import {
+﻿import {
     Document,
     Page,
     View,
     Text,
     Image,
-    StyleSheet,
     pdf,
     Font,
 } from "@react-pdf/renderer";
 import type {
     StoredDocument,
     LineItem,
-    TotalsConfig,
     TotalsResult,
 } from "@/types/document";
-import type { Theme } from "@/types/template";
+import type { Theme, TemplateElement } from "@/types/template";
 import { calculateTotals, formatCurrency } from "./calculations";
 
 // ---------------------------------------------------------------------------
 // Font resolution
 // ---------------------------------------------------------------------------
 const SYSTEM_FONT_FALLBACK = "Helvetica";
+const SYSTEM_BOLD_FALLBACK = "Helvetica-Bold";
 
 const GOOGLE_FONT_MAP: Record<string, string> = {
     inter: "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff",
@@ -38,7 +37,7 @@ function resolvePdfFont(fontFamily: string): string {
         .toLowerCase()
         .split(",")[0]
         .trim()
-        .replace(/['"]/g, "");
+        .replace(/['\"]/g, "");
     if (["system-ui", "sans-serif", "arial", "helvetica"].includes(lower)) {
         return SYSTEM_FONT_FALLBACK;
     }
@@ -52,483 +51,563 @@ function resolvePdfFont(fontFamily: string): string {
     return SYSTEM_FONT_FALLBACK;
 }
 
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-const styles = StyleSheet.create({
-    page: {
-        fontFamily: "Helvetica",
-        fontSize: 10,
-        color: "#1a1a1a",
-        paddingTop: 40,
-        paddingBottom: 60,
-        paddingHorizontal: 48,
-    },
-    // Header row
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: 28,
-    },
-    companyBlock: { flex: 1, marginRight: 24 },
-    logo: { maxWidth: 120, maxHeight: 60, marginBottom: 8 },
-    companyName: {
-        fontSize: 14,
-        fontFamily: "Helvetica-Bold",
-        marginBottom: 4,
-    },
-    companyLine: { color: "#555", marginBottom: 2 },
-    docBlock: { alignItems: "flex-end", minWidth: 140 },
-    docTitle: {
-        fontSize: 22,
-        fontFamily: "Helvetica-Bold",
-        marginBottom: 8,
-        letterSpacing: 1,
-    },
-    detailRow: { flexDirection: "row", marginBottom: 3 },
-    detailLabel: {
-        color: "#888",
-        fontSize: 9,
-        width: 70,
-        textAlign: "right",
-        marginRight: 6,
-    },
-    detailValue: { fontFamily: "Helvetica-Bold", fontSize: 9 },
-    // Divider
-    divider: {
-        borderBottomWidth: 1,
-        borderBottomColor: "#e5e7eb",
-        marginBottom: 20,
-    },
-    // Bill To
-    billToSection: { flexDirection: "row", marginBottom: 24 },
-    billToBlock: { flex: 1 },
-    billToLabel: {
-        fontSize: 8,
-        color: "#888",
-        textTransform: "uppercase",
-        letterSpacing: 1,
-        marginBottom: 4,
-    },
-    billToName: { fontSize: 11, fontFamily: "Helvetica-Bold", marginBottom: 2 },
-    billToLine: { color: "#444", marginBottom: 1 },
-    // Items table
-    tableHeader: {
-        flexDirection: "row",
-        backgroundColor: "#111",
-        color: "#fff",
-        paddingVertical: 6,
-        paddingHorizontal: 8,
-        marginBottom: 0,
-    },
-    tableRow: {
-        flexDirection: "row",
-        paddingVertical: 5,
-        paddingHorizontal: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: "#f1f5f9",
-    },
-    tableRowAlt: { backgroundColor: "#f9fafb" },
-    colNum: { width: 24 },
-    colName: { flex: 2 },
-    colDesc: { flex: 3 },
-    colQty: { width: 36, textAlign: "right" },
-    colRate: { width: 60, textAlign: "right" },
-    colAmount: { width: 70, textAlign: "right" },
-    thText: { color: "#fff", fontSize: 9, fontFamily: "Helvetica-Bold" },
-    tdText: { fontSize: 9 },
-    // Totals
-    totalsSection: { marginTop: 16, alignItems: "flex-end" },
-    totalsTable: { width: 220 },
-    totalsRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingVertical: 3,
-        borderBottomWidth: 1,
-        borderBottomColor: "#f1f5f9",
-    },
-    totalsDueRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingVertical: 5,
-        marginTop: 4,
-        borderTopWidth: 2,
-        borderTopColor: "#111",
-    },
-    totalsLabel: { color: "#555", fontSize: 9 },
-    totalsValue: { fontSize: 9 },
-    totalsDueLabel: { fontFamily: "Helvetica-Bold", fontSize: 11 },
-    totalsDueValue: { fontFamily: "Helvetica-Bold", fontSize: 11 },
-    // Notes / Terms
-    notesSection: { marginTop: 24 },
-    notesLabel: {
-        fontSize: 8,
-        color: "#888",
-        textTransform: "uppercase",
-        letterSpacing: 1,
-        marginBottom: 4,
-    },
-    notesText: { color: "#555", fontSize: 9, lineHeight: 1.5 },
-    // Footer
-    footer: {
-        position: "absolute",
-        bottom: 28,
-        left: 48,
-        right: 48,
-        flexDirection: "row",
-        justifyContent: "space-between",
-    },
-    footerText: { color: "#aaa", fontSize: 8 },
-});
-
-// ---------------------------------------------------------------------------
-// Helper: get doc title and meta fields
-// ---------------------------------------------------------------------------
-function getDocTitle(doc: StoredDocument): string {
-    return doc.documentType.toUpperCase();
+function boldFont(font: string): string {
+    return font === SYSTEM_FONT_FALLBACK ? SYSTEM_BOLD_FALLBACK : font;
 }
 
-function getMetaRows(
+// ---------------------------------------------------------------------------
+// Column definitions for item table
+// ---------------------------------------------------------------------------
+const COLUMN_WIDTHS: Record<string, object> = {
+    name:        { flex: 2 },
+    description: { flex: 3 },
+    qty:         { width: 36, textAlign: "right" as const },
+    unit:        { width: 36, textAlign: "right" as const },
+    rate:        { width: 60, textAlign: "right" as const },
+    discount:    { width: 50, textAlign: "right" as const },
+    tax:         { width: 40, textAlign: "right" as const },
+    amount:      { width: 70, textAlign: "right" as const },
+};
+
+const COLUMN_LABELS: Record<string, string> = {
+    name:        "Item",
+    description: "Description",
+    qty:         "Qty",
+    unit:        "Unit",
+    rate:        "Rate",
+    discount:    "Disc.",
+    tax:         "Tax%",
+    amount:      "Amount",
+};
+
+function cellValue(item: LineItem, col: string, currency: string): string {
+    switch (col) {
+        case "name":        return item.name;
+        case "description": return item.description;
+        case "qty":         return String(item.qty);
+        case "unit":        return item.unit ?? "";
+        case "rate":        return formatCurrency(item.rate, currency);
+        case "discount":
+            return item.discountType === "percent"
+                ? `${item.discount}%`
+                : formatCurrency(item.discount, currency);
+        case "tax":         return `${item.taxRate}%`;
+        case "amount":      return formatCurrency(item.amount, currency);
+        default:            return "";
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Helper: parse borderTop shorthand
+// ---------------------------------------------------------------------------
+function parseBorderTop(val?: string): { borderTopWidth?: number; borderTopColor?: string } {
+    if (!val) return {};
+    const parts = val.trim().split(/\s+/);
+    return {
+        borderTopWidth: parseInt(parts[0]) || 1,
+        borderTopColor: parts[2] ?? "#e5e7eb",
+    };
+}
+
+// ---------------------------------------------------------------------------
+// Render: header element
+// ---------------------------------------------------------------------------
+function renderHeaderEl(
+    el: TemplateElement,
     doc: StoredDocument,
-): Array<{ label: string; value: string }> {
+    font: string,
+): React.ReactNode {
+    const { data } = doc;
+    const bold = boldFont(font);
+    switch (el.type) {
+        case "logo": {
+            if (!data.company.logoUrl) return null;
+            return (
+                <Image
+                    src={data.company.logoUrl}
+                    style={{ maxHeight: 60, objectFit: "contain" }}
+                />
+            );
+        }
+        case "companyDetails": {
+            const c = data.company;
+            const fields = (el.config?.fields as string[]) ?? [];
+            const show = (f: string) => !fields.length || fields.includes(f);
+            const cityLine = [c.city, c.state, c.zip].filter(Boolean).join(", ");
+            return (
+                <View>
+                    {show("name") && c.name ? (
+                        <Text style={{ fontSize: 12, fontFamily: bold, marginBottom: 2 }}>{c.name}</Text>
+                    ) : null}
+                    {show("address") && c.address ? (
+                        <Text style={{ fontSize: 9, color: "#555", marginBottom: 1 }}>{c.address}</Text>
+                    ) : null}
+                    {show("cityStateZip") && cityLine ? (
+                        <Text style={{ fontSize: 9, color: "#555", marginBottom: 1 }}>{cityLine}</Text>
+                    ) : null}
+                    {show("country") && c.country ? (
+                        <Text style={{ fontSize: 9, color: "#555", marginBottom: 1 }}>{c.country}</Text>
+                    ) : null}
+                    {show("phone") && c.phone ? (
+                        <Text style={{ fontSize: 9, color: "#555", marginBottom: 1 }}>{c.phone}</Text>
+                    ) : null}
+                    {show("email") && c.email ? (
+                        <Text style={{ fontSize: 9, color: "#555", marginBottom: 1 }}>{c.email}</Text>
+                    ) : null}
+                    {show("website") && c.website ? (
+                        <Text style={{ fontSize: 9, color: "#555", marginBottom: 1 }}>{c.website}</Text>
+                    ) : null}
+                    {show("taxId") && c.taxId ? (
+                        <Text style={{ fontSize: 9, color: "#555" }}>Tax ID: {c.taxId}</Text>
+                    ) : null}
+                </View>
+            );
+        }
+        case "textLabel": {
+            const text = (el.config?.text as string) ?? "";
+            const fs = parseInt(el.styles?.fontSize ?? "28") || 28;
+            return (
+                <Text style={{ fontSize: fs, fontFamily: bold, letterSpacing: 1 }}>{text}</Text>
+            );
+        }
+        case "invoiceDetails":
+        case "estimateDetails":
+        case "receiptDetails":
+            return renderDetailsBlock(doc, font);
+        default:
+            return null;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Render: invoice/estimate/receipt details block
+// ---------------------------------------------------------------------------
+function renderDetailsBlock(doc: StoredDocument, font: string): React.ReactNode {
+    const bold = boldFont(font);
     const meta = doc.data.meta;
     const rows: Array<{ label: string; value: string }> = [];
-
     if (meta.type === "invoice") {
-        rows.push({ label: "Invoice #", value: meta.number || "—" });
-        rows.push({ label: "Date", value: meta.date || "—" });
-        if (meta.dueDate) rows.push({ label: "Due Date", value: meta.dueDate });
-        if (meta.terms) rows.push({ label: "Terms", value: meta.terms });
-        if (meta.poNumber)
-            rows.push({ label: "PO Number", value: meta.poNumber });
+        rows.push({ label: "INVOICE #", value: meta.number || "" });
+        rows.push({ label: "DATE", value: meta.date || "" });
+        if (meta.dueDate)  rows.push({ label: "DUE DATE", value: meta.dueDate });
+        if (meta.terms)    rows.push({ label: "TERMS", value: meta.terms });
+        if (meta.poNumber) rows.push({ label: "PO #", value: meta.poNumber });
     } else if (meta.type === "estimate") {
-        rows.push({ label: "Estimate #", value: meta.number || "—" });
-        rows.push({ label: "Date", value: meta.date || "—" });
-        if (meta.expiryDate)
-            rows.push({ label: "Expiry Date", value: meta.expiryDate });
-        if (meta.reference)
-            rows.push({ label: "Reference", value: meta.reference });
+        rows.push({ label: "ESTIMATE #", value: meta.number || "" });
+        rows.push({ label: "DATE", value: meta.date || "" });
+        if (meta.expiryDate) rows.push({ label: "EXPIRY", value: meta.expiryDate });
+        if (meta.reference)  rows.push({ label: "REF", value: meta.reference });
     } else {
-        rows.push({ label: "Receipt #", value: meta.number || "—" });
-        rows.push({ label: "Issue Date", value: meta.issueDate || "—" });
-        if (meta.paymentMethod)
-            rows.push({ label: "Payment", value: meta.paymentMethod });
-        if (meta.relatedInvoiceNumber)
-            rows.push({ label: "Invoice #", value: meta.relatedInvoiceNumber });
+        rows.push({ label: "RECEIPT #", value: meta.number || "" });
+        rows.push({ label: "ISSUE DATE", value: meta.issueDate || "" });
+        if (meta.paymentMethod)        rows.push({ label: "PAYMENT", value: meta.paymentMethod });
+        if (meta.relatedInvoiceNumber) rows.push({ label: "INVOICE #", value: meta.relatedInvoiceNumber });
     }
-    return rows;
-}
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-function CompanyBlock({ doc }: { doc: StoredDocument }) {
-    const c = doc.data.company;
-    const cityLine = [c.city, c.state, c.zip].filter(Boolean).join(", ");
     return (
-        <View style={styles.companyBlock}>
-            {c.logoUrl ? <Image src={c.logoUrl} style={styles.logo} /> : null}
-            {c.name ? <Text style={styles.companyName}>{c.name}</Text> : null}
-            {c.address ? (
-                <Text style={styles.companyLine}>{c.address}</Text>
-            ) : null}
-            {cityLine ? (
-                <Text style={styles.companyLine}>{cityLine}</Text>
-            ) : null}
-            {c.country ? (
-                <Text style={styles.companyLine}>{c.country}</Text>
-            ) : null}
-            {c.phone ? <Text style={styles.companyLine}>{c.phone}</Text> : null}
-            {c.email ? <Text style={styles.companyLine}>{c.email}</Text> : null}
-            {c.taxId ? (
-                <Text style={styles.companyLine}>Tax ID: {c.taxId}</Text>
-            ) : null}
-        </View>
-    );
-}
-
-function DocBlock({ doc }: { doc: StoredDocument }) {
-    const metaRows = getMetaRows(doc);
-    return (
-        <View style={styles.docBlock}>
-            <Text style={styles.docTitle}>{getDocTitle(doc)}</Text>
-            {metaRows.map((row) => (
-                <View key={row.label} style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>{row.label}</Text>
-                    <Text style={styles.detailValue}>{row.value}</Text>
+        <View>
+            <Text style={{ fontSize: 20, fontFamily: bold, marginBottom: 6, letterSpacing: 1 }}>
+                {doc.documentType.toUpperCase()}
+            </Text>
+            <View style={{ borderBottomWidth: 1, borderBottomColor: "#e5e7eb", marginBottom: 6 }} />
+            {rows.map((r) => (
+                <View key={r.label} style={{ marginBottom: 4 }}>
+                    <Text style={{ fontSize: 8, color: "#888", marginBottom: 1 }}>{r.label}</Text>
+                    <Text style={{ fontFamily: bold, fontSize: 10 }}>{r.value}</Text>
                 </View>
             ))}
         </View>
     );
 }
 
-function BillToSection({ doc }: { doc: StoredDocument }) {
-    const cl = doc.data.client;
-    const cityLine = [cl.city, cl.state, cl.zip].filter(Boolean).join(", ");
-    const hasShipping = Boolean(cl.shippingAddress);
+// ---------------------------------------------------------------------------
+// Render: body element
+// ---------------------------------------------------------------------------
+function renderBodyEl(
+    el: TemplateElement,
+    doc: StoredDocument,
+    totals: TotalsResult,
+    font: string,
+    theme: Theme,
+): React.ReactNode {
+    const { data } = doc;
+    const bold = boldFont(font);
+    const rowStyle = {
+        flexDirection: "row" as const,
+        justifyContent: "space-between" as const,
+        paddingVertical: 3,
+        borderBottomWidth: 1,
+        borderBottomColor: "#f1f5f9",
+    };
 
-    return (
-        <View style={styles.billToSection}>
-            <View style={styles.billToBlock}>
-                <Text style={styles.billToLabel}>Bill To</Text>
-                {cl.name ? (
-                    <Text style={styles.billToName}>{cl.name}</Text>
-                ) : null}
-                {cl.company ? (
-                    <Text style={styles.billToLine}>{cl.company}</Text>
-                ) : null}
-                {cl.address ? (
-                    <Text style={styles.billToLine}>{cl.address}</Text>
-                ) : null}
-                {cityLine ? (
-                    <Text style={styles.billToLine}>{cityLine}</Text>
-                ) : null}
-                {cl.country ? (
-                    <Text style={styles.billToLine}>{cl.country}</Text>
-                ) : null}
-                {cl.email ? (
-                    <Text style={styles.billToLine}>{cl.email}</Text>
-                ) : null}
-                {cl.phone ? (
-                    <Text style={styles.billToLine}>{cl.phone}</Text>
-                ) : null}
-            </View>
-            {hasShipping && (
-                <View style={[styles.billToBlock, { marginLeft: 32 }]}>
-                    <Text style={styles.billToLabel}>Ship To</Text>
-                    <Text style={styles.billToLine}>{cl.shippingAddress}</Text>
+    switch (el.type) {
+        case "billTo": {
+            const cl = data.client;
+            const cityLine = [cl.city, cl.state, cl.zip].filter(Boolean).join(", ");
+            return (
+                <View style={{ marginBottom: 12 }}>
+                    <Text style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+                        Bill To
+                    </Text>
+                    {cl.name ? <Text style={{ fontSize: 11, fontFamily: bold, marginBottom: 2 }}>{cl.name}</Text> : null}
+                    {cl.company ? <Text style={{ color: "#444", marginBottom: 1 }}>{cl.company}</Text> : null}
+                    {cl.address ? <Text style={{ color: "#444", marginBottom: 1 }}>{cl.address}</Text> : null}
+                    {cityLine   ? <Text style={{ color: "#444", marginBottom: 1 }}>{cityLine}</Text>   : null}
+                    {cl.country ? <Text style={{ color: "#444", marginBottom: 1 }}>{cl.country}</Text> : null}
+                    {cl.phone   ? <Text style={{ color: "#444", marginBottom: 1 }}>{cl.phone}</Text>   : null}
+                    {cl.email   ? <Text style={{ color: "#444", marginBottom: 1 }}>{cl.email}</Text>   : null}
                 </View>
-            )}
-        </View>
-    );
+            );
+        }
+        case "shipTo": {
+            if (!data.client.shippingAddress) return null;
+            return (
+                <View style={{ marginBottom: 12 }}>
+                    <Text style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+                        Ship To
+                    </Text>
+                    <Text style={{ color: "#444" }}>{data.client.shippingAddress}</Text>
+                </View>
+            );
+        }
+        case "logo": {
+            if (!data.company.logoUrl) return null;
+            return (
+                <View style={{ marginBottom: 12 }}>
+                    <Image src={data.company.logoUrl} style={{ maxHeight: 60, objectFit: "contain" }} />
+                </View>
+            );
+        }
+        case "companyDetails":
+            return (
+                <View style={{ marginBottom: 12 }}>{renderHeaderEl(el, doc, font)}</View>
+            );
+        case "invoiceDetails":
+        case "estimateDetails":
+        case "receiptDetails":
+            return (
+                <View style={{ marginBottom: 12 }}>{renderDetailsBlock(doc, font)}</View>
+            );
+        case "totalsBlock": {
+            const show = (el.config?.show as string[]) ?? ["subTotal", "tax1", "total", "balanceDue"];
+            const cur = data.totalsConfig.currency;
+            return (
+                <View style={{ marginTop: 8, alignItems: "flex-end" }}>
+                    <View style={{ width: 220 }}>
+                        {show.includes("subTotal") ? (
+                            <View style={rowStyle}>
+                                <Text style={{ color: "#555", fontSize: 9 }}>Subtotal</Text>
+                                <Text style={{ fontSize: 9 }}>{formatCurrency(totals.subTotal, cur)}</Text>
+                            </View>
+                        ) : null}
+                        {show.includes("discount") && totals.overallDiscount > 0 ? (
+                            <View style={rowStyle}>
+                                <Text style={{ color: "#555", fontSize: 9 }}>Discount</Text>
+                                <Text style={{ fontSize: 9 }}>-{formatCurrency(totals.overallDiscount, cur)}</Text>
+                            </View>
+                        ) : null}
+                        {show.includes("tax1") && data.totalsConfig.tax1.enabled && totals.tax1Amount !== 0 ? (
+                            <View style={rowStyle}>
+                                <Text style={{ color: "#555", fontSize: 9 }}>{data.totalsConfig.tax1.label} ({data.totalsConfig.tax1.rate}%)</Text>
+                                <Text style={{ fontSize: 9 }}>{formatCurrency(totals.tax1Amount, cur)}</Text>
+                            </View>
+                        ) : null}
+                        {show.includes("tax2") && data.totalsConfig.tax2.enabled && totals.tax2Amount !== 0 ? (
+                            <View style={rowStyle}>
+                                <Text style={{ color: "#555", fontSize: 9 }}>{data.totalsConfig.tax2.label} ({data.totalsConfig.tax2.rate}%)</Text>
+                                <Text style={{ fontSize: 9 }}>{formatCurrency(totals.tax2Amount, cur)}</Text>
+                            </View>
+                        ) : null}
+                        {show.includes("shipping") && totals.shipping !== 0 ? (
+                            <View style={rowStyle}>
+                                <Text style={{ color: "#555", fontSize: 9 }}>Shipping</Text>
+                                <Text style={{ fontSize: 9 }}>{formatCurrency(totals.shipping, cur)}</Text>
+                            </View>
+                        ) : null}
+                        {show.includes("adjustment") && totals.adjustment !== 0 ? (
+                            <View style={rowStyle}>
+                                <Text style={{ color: "#555", fontSize: 9 }}>Adjustment</Text>
+                                <Text style={{ fontSize: 9 }}>{formatCurrency(totals.adjustment, cur)}</Text>
+                            </View>
+                        ) : null}
+                        {show.includes("total") ? (
+                            <View style={rowStyle}>
+                                <Text style={{ color: "#555", fontSize: 9 }}>Total</Text>
+                                <Text style={{ fontSize: 9, fontFamily: bold }}>{formatCurrency(totals.total, cur)}</Text>
+                            </View>
+                        ) : null}
+                        {show.includes("amountPaid") && totals.amountPaid > 0 ? (
+                            <View style={rowStyle}>
+                                <Text style={{ color: "#555", fontSize: 9 }}>Amount Paid</Text>
+                                <Text style={{ fontSize: 9 }}>-{formatCurrency(totals.amountPaid, cur)}</Text>
+                            </View>
+                        ) : null}
+                        {show.includes("balanceDue") ? (
+                            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, marginTop: 4, borderTopWidth: 2, borderTopColor: theme.primaryColor }}>
+                                <Text style={{ fontFamily: bold, fontSize: 11 }}>Balance Due</Text>
+                                <Text style={{ fontFamily: bold, fontSize: 11 }}>{formatCurrency(totals.balanceDue, cur)}</Text>
+                            </View>
+                        ) : null}
+                    </View>
+                </View>
+            );
+        }
+        case "notes":
+            if (!data.notes) return null;
+            return (
+                <View style={{ marginTop: 16 }}>
+                    <Text style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Notes</Text>
+                    <Text style={{ color: "#555", fontSize: 9, lineHeight: 1.5 }}>{data.notes}</Text>
+                </View>
+            );
+        case "termsConditions":
+            if (!data.terms) return null;
+            return (
+                <View style={{ marginTop: 16 }}>
+                    <Text style={{ fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Terms & Conditions</Text>
+                    <Text style={{ color: "#555", fontSize: 9, lineHeight: 1.5 }}>{data.terms}</Text>
+                </View>
+            );
+        case "divider":
+            return (
+                <View style={{ borderBottomWidth: 1, borderBottomColor: "#e5e7eb", marginVertical: 8 }} />
+            );
+        default:
+            return null;
+    }
 }
 
-function ItemsTable({
+// ---------------------------------------------------------------------------
+// Render: footer element
+// ---------------------------------------------------------------------------
+function renderFooterEl(
+    el: TemplateElement,
+    doc: StoredDocument,
+): React.ReactNode {
+    switch (el.type) {
+        case "notes":
+            return <Text style={{ fontSize: 8, color: "#666" }}>{doc.data.notes}</Text>;
+        case "termsConditions":
+            return <Text style={{ fontSize: 8, color: "#666" }}>{doc.data.terms}</Text>;
+        case "pageNumber": {
+            const align = (el.styles?.textAlign ?? "right") as "left" | "center" | "right";
+            return (
+                <Text
+                    style={{ fontSize: 8, color: "#aaa", textAlign: align, width: "100%" }}
+                    render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+                />
+            );
+        }
+        case "companyDetails":
+            return <Text style={{ fontSize: 8, color: "#666" }}>{doc.data.company.name}</Text>;
+        case "textLabel": {
+            const text = (el.config?.text as string) ?? "";
+            return <Text style={{ fontSize: 8, color: "#666" }}>{text}</Text>;
+        }
+        default:
+            return null;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Item table component
+// ---------------------------------------------------------------------------
+function TemplateItemsTable({
     items,
+    columns,
     currency,
-    theme,
+    headerBg,
+    headerColor,
+    altRowColor,
+    font,
 }: {
     items: LineItem[];
+    columns: string[];
     currency: string;
-    theme: Theme;
+    headerBg: string;
+    headerColor: string;
+    altRowColor: string;
+    font: string;
 }) {
+    const bold = boldFont(font);
     return (
-        <View>
-            <View
-                style={[
-                    styles.tableHeader,
-                    { backgroundColor: theme.primaryColor },
-                ]}
-            >
-                <Text style={[styles.thText, styles.colNum]}>#</Text>
-                <Text style={[styles.thText, styles.colName]}>Item</Text>
-                <Text style={[styles.thText, styles.colDesc]}>Description</Text>
-                <Text style={[styles.thText, styles.colQty]}>Qty</Text>
-                <Text style={[styles.thText, styles.colRate]}>Rate</Text>
-                <Text style={[styles.thText, styles.colAmount]}>Amount</Text>
+        <View style={{ marginBottom: 4 }}>
+            <View style={{ flexDirection: "row", backgroundColor: headerBg, paddingVertical: 6, paddingHorizontal: 8 }}>
+                <View style={{ width: 24 }}>
+                    <Text style={{ color: headerColor, fontSize: 9, fontFamily: bold }}>#</Text>
+                </View>
+                {columns.map((col) => (
+                    <View key={col} style={COLUMN_WIDTHS[col] ?? { flex: 1 }}>
+                        <Text style={{ color: headerColor, fontSize: 9, fontFamily: bold }}>
+                            {COLUMN_LABELS[col] ?? col}
+                        </Text>
+                    </View>
+                ))}
             </View>
             {items.map((item, idx) => (
                 <View
                     key={item.id}
-                    style={[
-                        styles.tableRow,
-                        idx % 2 === 1 ? styles.tableRowAlt : {},
-                    ]}
+                    style={{
+                        flexDirection: "row",
+                        paddingVertical: 5,
+                        paddingHorizontal: 8,
+                        borderBottomWidth: 1,
+                        borderBottomColor: "#f1f5f9",
+                        backgroundColor: idx % 2 === 1 ? altRowColor : "transparent",
+                    }}
                 >
-                    <Text style={[styles.tdText, styles.colNum]}>
-                        {idx + 1}
-                    </Text>
-                    <Text style={[styles.tdText, styles.colName]}>
-                        {item.name}
-                    </Text>
-                    <Text style={[styles.tdText, styles.colDesc]}>
-                        {item.description}
-                    </Text>
-                    <Text style={[styles.tdText, styles.colQty]}>
-                        {item.qty}
-                    </Text>
-                    <Text style={[styles.tdText, styles.colRate]}>
-                        {formatCurrency(item.rate, currency)}
-                    </Text>
-                    <Text style={[styles.tdText, styles.colAmount]}>
-                        {formatCurrency(item.amount, currency)}
-                    </Text>
+                    <View style={{ width: 24 }}>
+                        <Text style={{ fontSize: 9 }}>{idx + 1}</Text>
+                    </View>
+                    {columns.map((col) => (
+                        <View key={col} style={COLUMN_WIDTHS[col] ?? { flex: 1 }}>
+                            <Text style={{ fontSize: 9 }}>{cellValue(item, col, currency)}</Text>
+                        </View>
+                    ))}
                 </View>
             ))}
         </View>
     );
 }
 
-function TotalsSection({
-    config,
-    totals,
-    theme,
-}: {
-    config: TotalsConfig;
-    totals: TotalsResult;
-    theme: Theme;
-}) {
-    const cur = config.currency;
-    return (
-        <View style={styles.totalsSection}>
-            <View style={styles.totalsTable}>
-                <View style={styles.totalsRow}>
-                    <Text style={styles.totalsLabel}>Subtotal</Text>
-                    <Text style={styles.totalsValue}>
-                        {formatCurrency(totals.subTotal, cur)}
-                    </Text>
-                </View>
-                {totals.overallDiscount > 0 && (
-                    <View style={styles.totalsRow}>
-                        <Text style={styles.totalsLabel}>Discount</Text>
-                        <Text style={styles.totalsValue}>
-                            -{formatCurrency(totals.overallDiscount, cur)}
-                        </Text>
-                    </View>
-                )}
-                {config.tax1.enabled && totals.tax1Amount > 0 && (
-                    <View style={styles.totalsRow}>
-                        <Text style={styles.totalsLabel}>
-                            {config.tax1.label} ({config.tax1.rate}%)
-                        </Text>
-                        <Text style={styles.totalsValue}>
-                            {formatCurrency(totals.tax1Amount, cur)}
-                        </Text>
-                    </View>
-                )}
-                {config.tax2.enabled && totals.tax2Amount > 0 && (
-                    <View style={styles.totalsRow}>
-                        <Text style={styles.totalsLabel}>
-                            {config.tax2.label} ({config.tax2.rate}%)
-                        </Text>
-                        <Text style={styles.totalsValue}>
-                            {formatCurrency(totals.tax2Amount, cur)}
-                        </Text>
-                    </View>
-                )}
-                {totals.shipping !== 0 && (
-                    <View style={styles.totalsRow}>
-                        <Text style={styles.totalsLabel}>Shipping</Text>
-                        <Text style={styles.totalsValue}>
-                            {formatCurrency(totals.shipping, cur)}
-                        </Text>
-                    </View>
-                )}
-                {totals.adjustment !== 0 && (
-                    <View style={styles.totalsRow}>
-                        <Text style={styles.totalsLabel}>Adjustment</Text>
-                        <Text style={styles.totalsValue}>
-                            {formatCurrency(totals.adjustment, cur)}
-                        </Text>
-                    </View>
-                )}
-                <View style={styles.totalsRow}>
-                    <Text style={styles.totalsLabel}>Total</Text>
-                    <Text
-                        style={[
-                            styles.totalsValue,
-                            { fontFamily: "Helvetica-Bold" },
-                        ]}
-                    >
-                        {formatCurrency(totals.total, cur)}
-                    </Text>
-                </View>
-                {totals.amountPaid > 0 && (
-                    <View style={styles.totalsRow}>
-                        <Text style={styles.totalsLabel}>Amount Paid</Text>
-                        <Text style={styles.totalsValue}>
-                            -{formatCurrency(totals.amountPaid, cur)}
-                        </Text>
-                    </View>
-                )}
-                <View
-                    style={[
-                        styles.totalsDueRow,
-                        { borderTopColor: theme.primaryColor },
-                    ]}
-                >
-                    <Text style={styles.totalsDueLabel}>Balance Due</Text>
-                    <Text style={styles.totalsDueValue}>
-                        {formatCurrency(totals.balanceDue, cur)}
-                    </Text>
-                </View>
-            </View>
-        </View>
-    );
-}
-
 // ---------------------------------------------------------------------------
-// PDF Document component
+// PDF Document  fully template-driven
 // ---------------------------------------------------------------------------
 function PdfDocument({ doc }: { doc: StoredDocument }) {
     const { data, templateSnapshot } = doc;
-    const theme = templateSnapshot.theme;
-    const resolvedFont = resolvePdfFont(theme.fontFamily);
+    const { theme, header, body, footer, pageSize } = templateSnapshot;
+    const font = resolvePdfFont(theme.fontFamily);
     const totals = calculateTotals(data.items, data.totalsConfig);
+
+    const bodyEls = body.elements;
+    const itemListEl = bodyEls.find((e) => e.type === "itemList");
+    const itemColumns = (itemListEl?.config?.columns as string[]) ?? ["name", "qty", "rate", "amount"];
+    const tableHeaderBg = itemListEl?.styles?.headerBackground ?? theme.primaryColor;
+    const tableHeaderColor = itemListEl?.styles?.headerColor ?? "#ffffff";
+    const altRowColor = itemListEl?.styles?.alternateRowColor ?? "#f9fafb";
+
+    const preTableEls = bodyEls.filter(
+        (e) => e.type !== "itemList" && (e.placement ?? "last-page") === "first-page",
+    );
+    const postTableEls = bodyEls.filter(
+        (e) => e.type !== "itemList" && (e.placement ?? "last-page") === "last-page",
+    );
+
+    const footerHeight = footer.visible ? footer.height : 0;
 
     return (
         <Document>
             <Page
-                size={
-                    templateSnapshot.pageSize === "Letter"
-                        ? "LETTER"
-                        : templateSnapshot.pageSize
-                }
-                style={[styles.page, { fontFamily: resolvedFont }]}
+                size={pageSize === "Letter" ? "LETTER" : "A4"}
+                style={{
+                    fontFamily: font,
+                    fontSize: 10,
+                    color: "#1a1a1a",
+                    paddingBottom: footerHeight + 8,
+                }}
             >
-                {/* Header: company + doc info */}
-                <View style={styles.header}>
-                    <CompanyBlock doc={doc} />
-                    <DocBlock doc={doc} />
-                </View>
-
-                <View style={styles.divider} />
-
-                {/* Bill To */}
-                <BillToSection doc={doc} />
-
-                {/* Items */}
-                <ItemsTable
-                    items={data.items}
-                    currency={data.totalsConfig.currency}
-                    theme={theme}
-                />
-
-                {/* Totals */}
-                <TotalsSection
-                    config={data.totalsConfig}
-                    totals={totals}
-                    theme={theme}
-                />
-
-                {/* Notes */}
-                {data.notes && (
-                    <View style={styles.notesSection}>
-                        <Text style={styles.notesLabel}>Notes</Text>
-                        <Text style={styles.notesText}>{data.notes}</Text>
+                {/* HEADER */}
+                {header.visible && (
+                    <View style={{ minHeight: header.height, flexDirection: "row", position: "relative" }}>
+                        {header.elements
+                            .filter((e) => e.type === "background")
+                            .map((bg) => (
+                                <View
+                                    key={bg.id}
+                                    style={{
+                                        position: "absolute",
+                                        top: 0, left: 0, right: 0, bottom: 0,
+                                        backgroundColor: bg.styles?.backgroundColor ?? "#ffffff",
+                                    }}
+                                />
+                            ))}
+                        {header.grid.columns.map((col) => {
+                            const el = header.elements.find(
+                                (e) => e.gridArea?.col === col.id && e.type !== "background",
+                            );
+                            const align = el?.styles?.textAlign;
+                            return (
+                                <View
+                                    key={col.id}
+                                    style={{
+                                        width: col.width,
+                                        padding: 12,
+                                        alignItems: align === "right" ? "flex-end" : align === "center" ? "center" : "flex-start",
+                                    }}
+                                >
+                                    {el ? renderHeaderEl(el, doc, font) : null}
+                                </View>
+                            );
+                        })}
                     </View>
                 )}
 
-                {/* Terms */}
-                {data.terms && (
-                    <View style={[styles.notesSection, { marginTop: 12 }]}>
-                        <Text style={styles.notesLabel}>
-                            Terms & Conditions
-                        </Text>
-                        <Text style={styles.notesText}>{data.terms}</Text>
-                    </View>
-                )}
-
-                {/* Page footer */}
-                <View style={styles.footer} fixed>
-                    <Text style={styles.footerText}>{data.company.name}</Text>
-                    <Text
-                        style={styles.footerText}
-                        render={({ pageNumber, totalPages }) =>
-                            `Page ${pageNumber} of ${totalPages}`
-                        }
+                {/* BODY */}
+                <View style={{ padding: 16, flex: 1 }}>
+                    {preTableEls.map((el) => (
+                        <View key={el.id}>{renderBodyEl(el, doc, totals, font, theme)}</View>
+                    ))}
+                    <TemplateItemsTable
+                        items={data.items}
+                        columns={itemColumns}
+                        currency={data.totalsConfig.currency}
+                        headerBg={tableHeaderBg}
+                        headerColor={tableHeaderColor}
+                        altRowColor={altRowColor}
+                        font={font}
                     />
+                    {postTableEls.map((el) => (
+                        <View key={el.id}>{renderBodyEl(el, doc, totals, font, theme)}</View>
+                    ))}
                 </View>
+
+                {/* FOOTER */}
+                {footer.visible && (
+                    <View
+                        fixed
+                        style={{
+                            position: "absolute",
+                            bottom: 0, left: 0, right: 0,
+                            height: footer.height,
+                            flexDirection: "row",
+                        }}
+                    >
+                        {footer.elements
+                            .filter((e) => e.type === "background")
+                            .map((bg) => {
+                                const border = parseBorderTop(bg.styles?.borderTop);
+                                return (
+                                    <View
+                                        key={bg.id}
+                                        style={{
+                                            position: "absolute",
+                                            top: 0, left: 0, right: 0, bottom: 0,
+                                            backgroundColor: bg.styles?.backgroundColor ?? "#f9fafb",
+                                            ...border,
+                                        }}
+                                    />
+                                );
+                            })}
+                        {footer.grid.columns.map((col) => {
+                            const el = footer.elements.find(
+                                (e) => e.gridArea?.col === col.id && e.type !== "background",
+                            );
+                            const align = el?.styles?.textAlign;
+                            return (
+                                <View
+                                    key={col.id}
+                                    style={{
+                                        width: col.width,
+                                        padding: 8,
+                                        justifyContent: "center",
+                                        alignItems: align === "right" ? "flex-end" : align === "center" ? "center" : "flex-start",
+                                    }}
+                                >
+                                    {el ? renderFooterEl(el, doc) : null}
+                                </View>
+                            );
+                        })}
+                    </View>
+                )}
             </Page>
         </Document>
     );

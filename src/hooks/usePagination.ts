@@ -2,14 +2,30 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import type { StoredDocument } from '@/types/document'
 import { PAGE_DIMENSIONS } from '@/types/common'
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Identifies one body element to render on a page.
+ * Reserved for future paragraph-level splitting (splitStart / splitEnd).
+ */
+export interface PageBodyElement {
+  elementId: string
+}
+
+/**
+ * Describes the content of one rendered page.
+ * The legacy itemStartIndex/itemEndIndex/postTable* fields continue to drive
+ * BodySectionRenderer. The new bodyElements field is populated for future use.
+ */
 export interface PageSlice {
   pageIndex: number          // 0-based
   itemStartIndex: number     // first item row index on this page
   itemEndIndex: number       // exclusive end
   showTotals: boolean        // true on pages that carry post-table elements
   showColumnHeader: boolean  // always true
-  postTableStartIndex: number  // index into postTableElements for this page (0 = first)
+  postTableStartIndex: number  // index into postTableElements for this page
   postTableEndIndex: number    // exclusive end; equal to start means none on this page
+  bodyElements?: PageBodyElement[]  // ordered list of element IDs to render on this page
 }
 
 interface PaginationResult {
@@ -19,12 +35,17 @@ interface PaginationResult {
   ready: boolean
 }
 
-const COLUMN_HEADER_HEIGHT = 36   // px — fallback estimate
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const COLUMN_HEADER_HEIGHT = 36   // px — fallback if col-header element not found
 const POST_TABLE_EL_HEIGHT = 60   // px — fallback per post-table element
-const ABOVE_TABLE_HEIGHT = 140    // px — fallback: all first-page elements + gap below
-const BODY_PADDING = 32           // 16px top + 16px bottom from BodySectionRenderer p-4
-const POST_TABLE_MARGIN = 16      // mt-4 on BodySectionRenderer's post-table wrapper (margin not in offsetHeight)
+const BODY_PADDING_TOP = 16       // p-4 top padding from BodySectionRenderer
+const BODY_PADDING_BOTTOM = 16    // p-4 bottom padding from BodySectionRenderer
+const BODY_PADDING = BODY_PADDING_TOP + BODY_PADDING_BOTTOM  // total = 32
+const POST_TABLE_MARGIN = 16      // mt-4 on BodySectionRenderer post-table wrapper
 const POST_TABLE_GAP = 16         // gap-4 between post-table elements
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function usePagination(doc: StoredDocument): PaginationResult {
   const { templateSnapshot, data } = doc
@@ -38,6 +59,16 @@ export function usePagination(doc: StoredDocument): PaginationResult {
   const itemListEl = templateSnapshot.body.elements.find((el) => el.type === 'itemList')
   const maxRowsPerPage = (itemListEl?.config?.maxRowsPerPage as number) ?? 0
 
+  // Collect element IDs by placement for bodyElements population
+  const sortedBody = [...templateSnapshot.body.elements].sort((a, b) => a.zIndex - b.zIndex)
+  const firstPageElIds = sortedBody
+    .filter((el) => el.type !== 'watermark' && (el.placement ?? 'last-page') === 'first-page')
+    .map((el) => el.id)
+  const postTableElIds = sortedBody
+    .filter((el) => el.type !== 'watermark' && (el.placement ?? 'last-page') === 'last-page')
+    .map((el) => el.id)
+  const itemListId = itemListEl?.id ?? 'itemList'
+
   const measureRef = useRef<HTMLDivElement | null>(null)
   const [pages, setPages] = useState<PageSlice[]>([])
   const [ready, setReady] = useState(false)
@@ -46,15 +77,29 @@ export function usePagination(doc: StoredDocument): PaginationResult {
     const container = measureRef.current
     if (!container) return
 
-    const rowEls = Array.from(container.querySelectorAll<HTMLElement>('[data-row-index]'))
+    // ── 1. Measure first-page block height via DOM coordinates ──────────────
+    // MeasureContainer mirrors BodySectionRenderer exactly (padding:16, pre-table
+    // flex-col gap-16, post-table marginTop:16 flex-col gap-16).
+    // The offsetTop of the itemList wrapper is the exact Y at which the item table
+    // starts on page 1 — includes root padding (16) + first-page element heights +
+    // gaps between them. No fallback constant needed.
+    const itemListWrapper = container.querySelector<HTMLElement>(
+      '[data-measure-placement="all-pages"]',
+    )
+    const firstPageH = itemListWrapper?.offsetTop ?? 0
+
+    // ── 2. Measure column header ─────────────────────────────────────────────
     const colHeaderEl = container.querySelector<HTMLElement>('[data-col-header]')
-    const aboveTableEl = container.querySelector<HTMLElement>('[data-above-table]')
-
     const colHeaderH = colHeaderEl?.offsetHeight ?? COLUMN_HEADER_HEIGHT
-    // aboveTableH includes the 16px gap-4 after bill-to (measured via paddingBottom on data-above-table)
-    const aboveTableH = aboveTableEl?.offsetHeight ?? ABOVE_TABLE_HEIGHT
 
-    // Measure each post-table element individually
+    // ── 3. Measure each item row individually ────────────────────────────────
+    const rowEls = Array.from(container.querySelectorAll<HTMLElement>('[data-row-index]'))
+    const rowHeights: number[] = data.items.map((_, i) => {
+      const el = rowEls.find((e) => e.dataset.rowIndex === String(i))
+      return el?.offsetHeight ?? 40
+    })
+
+    // ── 4. Measure each post-table element individually ──────────────────────
     const postEls = Array.from(container.querySelectorAll<HTMLElement>('[data-post-el-index]'))
     const postElCount = postEls.length
     const postElHeights: number[] = Array.from({ length: postElCount }, (_, i) => {
@@ -62,28 +107,23 @@ export function usePagination(doc: StoredDocument): PaginationResult {
       return el?.offsetHeight ?? POST_TABLE_EL_HEIGHT
     })
 
-    // Build height map: rowIndex → measured px height
-    const rowHeights: number[] = data.items.map((_, i) => {
-      const el = rowEls.find((e) => e.dataset.rowIndex === String(i))
-      return el?.offsetHeight ?? 40
-    })
-
+    // ── 5. Greedy item packing ────────────────────────────────────────────────
+    // Page 0 starts with measured first-page block + column header.
+    // Subsequent pages start with just the column header.
     const result: PageSlice[] = []
     let currentPage = 0
-    // Page 1: measured bill-to section (+ gap) + column header
-    let used = aboveTableH + colHeaderH
+    let used = firstPageH + colHeaderH
     let pageItemStart = 0
     let i = 0
 
     while (i <= data.items.length) {
       if (i === data.items.length) {
-        // All items placed — now greedily pack post-table elements onto pages
+        // ── 6. Greedy post-table element packing ─────────────────────────────
         let postIdx = 0
         let pagePostStart = 0
 
         while (postIdx <= postElCount) {
           if (postIdx === postElCount) {
-            // All post-table elements placed — close the current page
             const showAny = postIdx > pagePostStart
             result.push({
               pageIndex: currentPage,
@@ -93,11 +133,14 @@ export function usePagination(doc: StoredDocument): PaginationResult {
               showColumnHeader: true,
               postTableStartIndex: pagePostStart,
               postTableEndIndex: postIdx,
+              bodyElements: buildBodyElements(
+                firstPageElIds, itemListId, postTableElIds,
+                pagePostStart, postIdx, currentPage === 0 && pageItemStart === 0,
+              ),
             })
             break
           }
 
-          // Cost to add this element: margin before first (POST_TABLE_MARGIN) or gap between (POST_TABLE_GAP)
           const isFirstOnPage = postIdx === pagePostStart
           const addCost = isFirstOnPage ? POST_TABLE_MARGIN : POST_TABLE_GAP
           const elH = postElHeights[postIdx] ?? POST_TABLE_EL_HEIGHT
@@ -106,7 +149,6 @@ export function usePagination(doc: StoredDocument): PaginationResult {
             used += addCost + elH
             postIdx++
           } else {
-            // This element doesn't fit — close current page, start a new one
             result.push({
               pageIndex: currentPage,
               itemStartIndex: pageItemStart,
@@ -115,11 +157,14 @@ export function usePagination(doc: StoredDocument): PaginationResult {
               showColumnHeader: true,
               postTableStartIndex: pagePostStart,
               postTableEndIndex: postIdx,
+              bodyElements: buildBodyElements(
+                firstPageElIds, itemListId, postTableElIds,
+                pagePostStart, postIdx, currentPage === 0 && pageItemStart === 0,
+              ),
             })
             currentPage++
-            // New page has no items and no above-table — starts empty
-            used = 0
-            pageItemStart = i  // no new items on overflow pages
+            used = BODY_PADDING_TOP  // top padding is always consumed on every page
+            pageItemStart = i
             pagePostStart = postIdx
           }
         }
@@ -134,7 +179,6 @@ export function usePagination(doc: StoredDocument): PaginationResult {
         used += rowH
         i++
       } else {
-        // Row doesn't fit (or max rows per page reached) — close current page, start new one
         result.push({
           pageIndex: currentPage,
           itemStartIndex: pageItemStart,
@@ -143,11 +187,15 @@ export function usePagination(doc: StoredDocument): PaginationResult {
           showColumnHeader: true,
           postTableStartIndex: 0,
           postTableEndIndex: 0,
+          bodyElements: buildBodyElements(
+            firstPageElIds, itemListId, postTableElIds,
+            0, 0, currentPage === 0,
+          ),
         })
         currentPage++
-        used = colHeaderH  // new page: itemList is first element, no gap before it
+        used = BODY_PADDING_TOP + colHeaderH  // top padding + column header on every new page
         pageItemStart = i
-        // Edge case: single row taller than page — force it through anyway (size overflow only)
+        // Edge case: single row taller than page — force it through
         if (!forceBreak && rowH > availableH) {
           used += rowH
           i++
@@ -155,7 +203,7 @@ export function usePagination(doc: StoredDocument): PaginationResult {
       }
     }
 
-    // If no items at all, ensure at least one page with totals
+    // Guard: ensure at least one page
     if (result.length === 0) {
       result.push({
         pageIndex: 0,
@@ -165,16 +213,19 @@ export function usePagination(doc: StoredDocument): PaginationResult {
         showColumnHeader: true,
         postTableStartIndex: 0,
         postTableEndIndex: postElCount,
+        bodyElements: buildBodyElements(
+          firstPageElIds, itemListId, postTableElIds, 0, postElCount, true,
+        ),
       })
     }
 
     setPages(result)
     setReady(true)
-  }, [data.items, availableH, maxRowsPerPage])
+  }, [data.items, availableH, maxRowsPerPage, firstPageElIds, postTableElIds, itemListId])
 
   useEffect(() => {
-    // Double-rAF: first frame lets React flush MeasureContainer re-render,
-    // second frame ensures layout has been recalculated before we measure.
+    // Double-rAF: first frame flushes MeasureContainer re-render,
+    // second frame ensures browser has recalculated layout before we measure.
     let innerFrame: number
     const outerFrame = requestAnimationFrame(() => {
       innerFrame = requestAnimationFrame(() => {
@@ -182,18 +233,28 @@ export function usePagination(doc: StoredDocument): PaginationResult {
       })
     })
 
-    // Watch all measured sections for size changes so pagination stays accurate:
-    // - data-above-table: bill-to content changes height as client fields are filled
-    // - data-post-el-index elements: individual post-table element heights change
     const container = measureRef.current
     let observer: ResizeObserver | null = null
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
     if (container && typeof ResizeObserver !== 'undefined') {
       observer = new ResizeObserver(() => {
-        compute()
+        // Debounce to avoid running compute() on every keystroke during text editing
+        if (debounceTimer) clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => {
+          compute()
+        }, 50)
       })
-      const aboveTableEl = container.querySelector<HTMLElement>('[data-above-table]')
-      if (aboveTableEl) observer.observe(aboveTableEl)
-      container.querySelectorAll<HTMLElement>('[data-post-el-index]').forEach((el) => {
+
+      // Watch ALL measured element wrappers (first-page, itemList, post-table)
+      container.querySelectorAll<HTMLElement>('[data-measure-id]').forEach((el) => {
+        observer!.observe(el)
+      })
+
+      // Watch ALL individual item rows — this is the critical fix.
+      // Previously only aboveTable and post-table elements were observed,
+      // so editing a row's description (making it taller) never triggered recompute.
+      container.querySelectorAll<HTMLElement>('[data-row-index]').forEach((el) => {
         observer!.observe(el)
       })
     }
@@ -201,11 +262,39 @@ export function usePagination(doc: StoredDocument): PaginationResult {
     return () => {
       cancelAnimationFrame(outerFrame)
       cancelAnimationFrame(innerFrame)
+      if (debounceTimer) clearTimeout(debounceTimer)
       observer?.disconnect()
     }
   }, [compute])
+  // compute depends on [data.items, ...], so when items are added/removed,
+  // compute gets a new reference → useEffect re-runs → observer re-registers
+  // on the new row elements.
 
   const totalPages = Math.max(pages.length, 1)
 
   return { pages, totalPages, measureRef, ready }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Builds the bodyElements list for a PageSlice.
+ * On the first page: first-page elements + itemList + assigned post-table elements.
+ * On subsequent pages: itemList + assigned post-table elements.
+ */
+function buildBodyElements(
+  firstPageElIds: string[],
+  itemListId: string,
+  postTableElIds: string[],
+  postStart: number,
+  postEnd: number,
+  isFirstPage: boolean,
+): PageBodyElement[] {
+  const elements: PageBodyElement[] = []
+  if (isFirstPage) {
+    firstPageElIds.forEach((id) => elements.push({ elementId: id }))
+  }
+  elements.push({ elementId: itemListId })
+  postTableElIds.slice(postStart, postEnd).forEach((id) => elements.push({ elementId: id }))
+  return elements
 }

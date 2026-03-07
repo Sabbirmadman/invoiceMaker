@@ -103,6 +103,7 @@ export function ItemListElement({
         <div className="w-full text-sm">
             {showHeader && (
                 <div
+                    data-col-header
                     className="flex w-full"
                     style={{ backgroundColor: headerBg, color: headerColor }}
                 >
@@ -129,6 +130,7 @@ export function ItemListElement({
                 items.map((item, idx) => (
                     <div
                         key={item.id}
+                        data-row-index={itemOffset + idx}
                         className="flex w-full border-b items-start group"
                         style={{
                             backgroundColor:

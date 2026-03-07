@@ -1,12 +1,13 @@
 import { forwardRef } from 'react'
 import type { StoredDocument, TotalsResult } from '@/types/document'
-import { formatCurrency, calculateLineAmount, calculateTotals } from '@/services/calculations'
+import { calculateTotals } from '@/services/calculations'
 import type { TemplateElement } from '@/types/template'
 import { BillToElement } from '@/components/elements/BillToElement'
 import { ShipToElement } from '@/components/elements/ShipToElement'
 import { InvoiceDetailsElement } from '@/components/elements/InvoiceDetailsElement'
 import { EstimateDetailsElement } from '@/components/elements/EstimateDetailsElement'
 import { ReceiptDetailsElement } from '@/components/elements/ReceiptDetailsElement'
+import { ItemListElement } from '@/components/elements/ItemListElement'
 import { TotalsBlockElement } from '@/components/elements/TotalsBlockElement'
 import { NotesElement } from '@/components/elements/NotesElement'
 import { TermsElement } from '@/components/elements/TermsElement'
@@ -20,12 +21,20 @@ interface Props {
 
 /**
  * Hidden off-screen container used only for measuring element heights.
- * Renders at actual page width (794px for A4) so offsetHeight is accurate.
+ * Renders at actual page width so offsetHeight / offsetTop are accurate.
  *
- * Uses element.placement to determine grouping:
- *   first-page  → data-above-table  (rendered once on page 1 before itemList)
- *   all-pages   → itemList rows measured individually via data-row-index
- *   last-page   → data-post-table   (totals block etc., must fit on final page)
+ * CRITICAL: This container's DOM structure must mirror BodySectionRenderer exactly:
+ *   - Root has padding:16 (matches p-4)
+ *   - Pre-table wrapper: flex-col gap-16 (matches flex flex-col gap-4)
+ *     Contains: first-page elements + ItemListElement (with data-row-index on its rows)
+ *   - Post-table wrapper: marginTop:16 flex-col gap-16 (matches mt-4 gap-4)
+ *     Contains: post-table elements
+ *
+ * Data attributes:
+ *   data-measure-id        — on every element wrapper (for ResizeObserver)
+ *   data-measure-placement — "first-page" | "all-pages" | "last-page"
+ *   data-row-index         — on each item row (added by ItemListElement itself)
+ *   data-post-el-index     — on each post-table element wrapper
  */
 export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc }, ref) => {
   const { data, templateSnapshot } = doc
@@ -34,19 +43,18 @@ export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc }, ref)
 
   const sortedBody = [...templateSnapshot.body.elements].sort((a, b) => a.zIndex - b.zIndex)
 
-  // first-page elements: everything with placement === 'first-page'
+  // first-page elements (BillTo, ShipTo, InvoiceDetails, etc.)
   const aboveTableElements = sortedBody.filter(
     (el) => el.type !== 'watermark' && (el.placement ?? 'last-page') === 'first-page',
   )
 
-  // last-page elements: everything with placement === 'last-page' (or no placement)
+  // last-page elements (TotalsBlock, Notes, Terms, etc.)
   const postTableElements = sortedBody.filter(
     (el) => el.type !== 'watermark' && (el.placement ?? 'last-page') === 'last-page',
   )
 
-  // The all-pages element (itemList) — find its column config for the header mock
+  // all-pages element (itemList)
   const itemListEl = sortedBody.find((el) => el.placement === 'all-pages')
-  const columns: string[] = (itemListEl?.config?.columns as string[]) ?? ['name', 'qty', 'rate', 'amount']
 
   return (
     <div
@@ -57,69 +65,68 @@ export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc }, ref)
         top: -9999,
         left: -9999,
         width: pageWidth,
+        // Mirror BodySectionRenderer's p-4 exactly
+        padding: 16,
+        display: 'flex',
+        flexDirection: 'column',
         visibility: 'hidden',
         pointerEvents: 'none',
         zIndex: -1,
+        overflow: 'hidden',
       }}
     >
-      {/* Above-table elements (first-page placement).
-          paddingBottom: 16 captures the gap-4 between last first-page element and itemList. */}
-      <div data-above-table className="flex flex-col gap-4" style={{ paddingBottom: 16 }}>
-        {aboveTableElements.map((el) => renderAboveTableElement(el, doc, totals))}
-      </div>
-
-      {/* Column header — measured to know how much space to reserve per new page.
-          Renders a minimal mock matching ItemListElement's header row. */}
-      <div data-col-header className="flex w-full text-sm" style={{ background: '#000', color: '#fff' }}>
-        <div className="w-8 px-3 py-2 shrink-0">#</div>
-        {columns.map((col) => (
-          <div key={col} className="flex-1 px-3 py-2">{col}</div>
-        ))}
-      </div>
-
-      {/* Item rows — each measured individually for row-level pagination */}
-      {data.items.map((item, idx) => {
-        const amount = calculateLineAmount(item)
-        return (
+      {/*
+       * Pre-table wrapper — mirrors BodySectionRenderer's "div.flex-col.gap-4"
+       * Contains: first-page elements (BillTo, Details…) + itemList
+       */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {aboveTableElements.map((el) => (
           <div
-            key={item.id}
-            data-row-index={idx}
-            className="flex w-full border-b text-sm"
+            key={el.id}
+            data-measure-id={el.id}
+            data-measure-placement="first-page"
           >
-            <div className="w-8 px-3 py-2 shrink-0">{idx + 1}</div>
-            <div className="flex-1 px-3 py-2">
-              <div>{item.name}</div>
-              {item.description && (
-                <div className="text-xs text-muted-foreground">{item.description}</div>
-              )}
-            </div>
-            {columns.includes('qty') && (
-              <div className="flex-1 px-3 py-2 text-right">{item.qty}</div>
-            )}
-            {columns.includes('rate') && (
-              <div className="flex-1 px-3 py-2 text-right">
-                {formatCurrency(item.rate, data.totalsConfig.currency)}
-              </div>
-            )}
-            {columns.includes('tax') && (
-              <div className="flex-1 px-3 py-2 text-right">{item.taxRate}%</div>
-            )}
-            {(columns.includes('amount') || columns.includes('discount')) && (
-              <div className="flex-1 px-3 py-2 text-right">
-                {formatCurrency(amount, data.totalsConfig.currency)}
-              </div>
-            )}
+            {renderAboveTableElement(el, doc, totals)}
           </div>
-        )
-      })}
+        ))}
 
-      {/* Post-table elements — each measured individually for per-element pagination.
-          No wrapper div — each element gets its own data-post-el-index attribute. */}
-      {postTableElements.map((el, idx) => (
-        <div key={el.id} data-post-el-index={idx}>
-          {renderPostTableElement(el, doc, totals)}
+        {/* ItemList — uses actual ItemListElement so row heights are pixel-accurate.
+            ItemListElement adds data-row-index to each row, which usePagination reads. */}
+        {itemListEl && (
+          <div
+            data-measure-id={itemListEl.id}
+            data-measure-placement="all-pages"
+          >
+            <ItemListElement
+              element={itemListEl}
+              items={data.items}
+              currency={data.totalsConfig.currency}
+              showHeader={true}
+              itemOffset={0}
+              isLastPage={true}
+            />
+          </div>
+        )}
+      </div>
+
+      {/*
+       * Post-table wrapper — mirrors BodySectionRenderer's "div.flex-col.gap-4.mt-4"
+       * The marginTop:16 matches mt-4, gap:16 matches gap-4.
+       */}
+      {postTableElements.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+          {postTableElements.map((el, idx) => (
+            <div
+              key={el.id}
+              data-measure-id={el.id}
+              data-measure-placement="last-page"
+              data-post-el-index={idx}
+            >
+              {renderPostTableElement(el, doc, totals)}
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   )
 })

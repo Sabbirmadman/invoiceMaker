@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, CheckCircle, Download } from "lucide-react";
+import { ArrowLeft, Eye, CheckCircle, Download, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { downloadPdf } from "@/services/pdfExport";
 import { PageCanvas } from "@/components/canvas/PageCanvas";
@@ -30,6 +30,7 @@ export default function FillModePage() {
         s.documents.documents.find((d) => d.id === id),
     );
     const [hasSaved, setHasSaved] = useState(false);
+    const [showBounds, setShowBounds] = useState(true);
 
     if (!doc || !id) {
         return (
@@ -50,7 +51,7 @@ export default function FillModePage() {
 
     const fillModeCtx = {
         fillMode: true,
-        showBounds: true,
+        showBounds: showBounds,
         docId: id,
         onUpdateCompany: (p: Partial<CompanyData>) =>
             patch({ company: { ...doc!.data.company, ...p } }),
@@ -102,6 +103,19 @@ export default function FillModePage() {
                                     Auto-saved
                                 </span>
                             )}
+                            <Button
+                                variant={showBounds ? "secondary" : "outline"}
+                                size="sm"
+                                onClick={() => setShowBounds((v) => !v)}
+                                title={
+                                    showBounds
+                                        ? "Hide element borders"
+                                        : "Show element borders"
+                                }
+                            >
+                                <Layers className="size-4 mr-2" />
+                                {showBounds ? "Hide Guides" : "Show Guides"}
+                            </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
