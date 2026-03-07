@@ -48,10 +48,20 @@ export interface Theme {
   secondaryColor?: string
 }
 
+/**
+ * Controls where a body element is placed across pages:
+ * - 'first-page'  : rendered only on page 1 (billTo, shipTo, invoiceDetails, etc.)
+ * - 'all-pages'   : repeated on every page (itemList)
+ * - 'last-page'   : rendered only on the final page (totalsBlock, notes, terms, etc.)
+ * Defaults to 'last-page' if omitted (safe fallback — treated as post-table).
+ */
+export type BodyPlacement = 'first-page' | 'all-pages' | 'last-page'
+
 export interface TemplateElement {
   id: string
   type: ElementType
   zIndex: number
+  placement?: BodyPlacement             // only meaningful for body elements
   gridArea?: GridArea
   bindings?: Record<string, string>     // { fieldName: '{{token}}' }
   config?: Record<string, unknown>

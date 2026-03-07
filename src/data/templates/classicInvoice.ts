@@ -71,6 +71,7 @@ export const classicInvoice: Template = {
       {
         id: 'el_bill_to',
         type: 'billTo',
+        placement: 'first-page',
         zIndex: 3,
         bindings: {
           name: '{{client.name}}',
@@ -83,6 +84,7 @@ export const classicInvoice: Template = {
       {
         id: 'el_items',
         type: 'itemList',
+        placement: 'all-pages',
         zIndex: 3,
         config: {
           columns: ['name', 'description', 'qty', 'rate', 'tax', 'amount'],
@@ -97,6 +99,7 @@ export const classicInvoice: Template = {
       {
         id: 'el_totals',
         type: 'totalsBlock',
+        placement: 'last-page',
         zIndex: 3,
         config: {
           show: ['subTotal', 'discount', 'tax1', 'total', 'balanceDue'],

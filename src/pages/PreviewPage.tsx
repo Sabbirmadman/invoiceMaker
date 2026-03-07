@@ -10,6 +10,7 @@ import type { CompanyData, ClientData, InvoiceMeta, EstimateMeta, ReceiptMeta, L
 // Preview mode uses a no-op FillModeContext (fillMode=false)
 const previewCtx = {
   fillMode: false,
+  showBounds: true,
   docId: '',
   onUpdateCompany: (_p: Partial<CompanyData>) => {},
   onUpdateClient: (_p: Partial<ClientData>) => {},

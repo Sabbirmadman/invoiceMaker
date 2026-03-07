@@ -26,10 +26,6 @@
     size: A4;
     margin: 0;
   }
-
-  body > *:not(#print-root) {
-    display: none !important;
-  }
 }
 
 @theme inline {

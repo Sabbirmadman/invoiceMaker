@@ -32,14 +32,17 @@ export function CanvasPage({ doc, totals, pageNumber, totalPages, slice, zoom = 
 
   return (
     <div
-      className="relative bg-white shadow-md overflow-hidden"
+      data-canvas-page="true"
+      className="relative bg-white shadow-md overflow-hidden print:transform-none print:shadow-none print:mb-0"
       style={{
         width: dims.width,
         height: dims.height,
         transform: `scale(${zoom})`,
         transformOrigin: 'top center',
         marginBottom: zoom < 1 ? `${dims.height * (zoom - 1)}px` : undefined,
-      }}
+        printColorAdjust: 'exact',
+        WebkitPrintColorAdjust: 'exact',
+      } as React.CSSProperties}
     >
       {/* Header */}
       {header.visible && (
@@ -50,6 +53,7 @@ export function CanvasPage({ doc, totals, pageNumber, totalPages, slice, zoom = 
             totals={totals}
             currentPage={pageNumber}
             totalPages={totalPages}
+            sectionType="header"
           />
         </div>
       )}
@@ -76,6 +80,8 @@ export function CanvasPage({ doc, totals, pageNumber, totalPages, slice, zoom = 
           itemOffset={slice ? slice.itemStartIndex : 0}
           isLastPage={slice ? slice.itemEndIndex === doc.data.items.length : true}
           allItems={doc.data.items}
+          postTableStartIndex={slice?.postTableStartIndex ?? 0}
+          postTableEndIndex={slice?.postTableEndIndex}
         />
       </div>
 
@@ -91,6 +97,7 @@ export function CanvasPage({ doc, totals, pageNumber, totalPages, slice, zoom = 
             totals={totals}
             currentPage={pageNumber}
             totalPages={totalPages}
+            sectionType="footer"
           />
         </div>
       )}
@@ -104,13 +111,27 @@ export function CanvasPage({ doc, totals, pageNumber, totalPages, slice, zoom = 
             <div
               className="absolute left-0 right-0 pointer-events-none"
               style={{ top: header.height + 16, height: 0, borderTop: '1.5px dashed #3b82f6', zIndex: 100 }}
-            />
+            >
+              <span
+                className="absolute font-mono"
+                style={{ fontSize: '8px', background: '#3b82f6', color: '#fff', padding: '1px 3px', top: -10, left: 0 }}
+              >
+                x:0 y:{header.height + 16}
+              </span>
+            </div>
           )}
           {footer.visible && (
             <div
               className="absolute left-0 right-0 pointer-events-none"
               style={{ top: dims.height - footer.height - 16, height: 0, borderTop: '1.5px dashed #3b82f6', zIndex: 100 }}
-            />
+            >
+              <span
+                className="absolute font-mono"
+                style={{ fontSize: '8px', background: '#3b82f6', color: '#fff', padding: '1px 3px', top: 2, left: 0 }}
+              >
+                x:0 y:{dims.height - footer.height - 16}
+              </span>
+            </div>
           )}
         </>
       )}

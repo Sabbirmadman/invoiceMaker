@@ -51,9 +51,9 @@ The renderer sorts all elements in a section by `zIndex` ascending and renders t
 | All other elements | `3` |
 | **`logo`** | **`5`** (must be higher than any element in the same grid cell) |
 
-**Critical:** The `logo` element shares a grid cell with `companyDetails` in all standard layouts. Because the logo renders an invisible `<input type="file">` that covers its entire cell, it **must render after** `companyDetails` in DOM order (i.e. have a higher zIndex) so clicks land on the file input. Using `zIndex: 5` for `logo` while `companyDetails` stays at `zIndex: 3` guarantees this.
+**Critical:** The `logo` element shares a grid cell with `companyDetails` in all standard layouts. Because the logo renders an invisible `<input type="file">` that covers its upload zone, it **must render after** `companyDetails` in DOM order (i.e. have a higher zIndex) so clicks land on the file input. Using `zIndex: 5` for `logo` while `companyDetails` stays at `zIndex: 3` guarantees this.
 
-Forgetting to do this means the logo upload zone is silently blocked by the overlapping company details element.
+The renderer gives the `logo` wrapper `height: auto` (not `h-full`) specifically so it only covers the logo zone height and does not block the company detail fields below it. This is handled automatically by `SectionRenderer` — no template action needed.
 
 ---
 

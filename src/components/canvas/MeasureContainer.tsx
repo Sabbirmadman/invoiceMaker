@@ -2,6 +2,11 @@ import { forwardRef } from 'react'
 import type { StoredDocument, TotalsResult } from '@/types/document'
 import { formatCurrency, calculateLineAmount, calculateTotals } from '@/services/calculations'
 import type { TemplateElement } from '@/types/template'
+import { BillToElement } from '@/components/elements/BillToElement'
+import { ShipToElement } from '@/components/elements/ShipToElement'
+import { InvoiceDetailsElement } from '@/components/elements/InvoiceDetailsElement'
+import { EstimateDetailsElement } from '@/components/elements/EstimateDetailsElement'
+import { ReceiptDetailsElement } from '@/components/elements/ReceiptDetailsElement'
 import { TotalsBlockElement } from '@/components/elements/TotalsBlockElement'
 import { NotesElement } from '@/components/elements/NotesElement'
 import { TermsElement } from '@/components/elements/TermsElement'
@@ -9,25 +14,39 @@ import { DividerElement } from '@/components/elements/DividerElement'
 import { TextLabelElement } from '@/components/elements/TextLabelElement'
 import { PageNumberElement } from '@/components/elements/PageNumberElement'
 
-// Must match the constant in SectionRenderer
-const PRE_TABLE_TYPES = new Set(['watermark', 'billTo', 'shipTo', 'itemList'])
-
 interface Props {
   doc: StoredDocument
 }
 
 /**
- * Hidden off-screen container used only for measuring row heights.
- * Renders the item table at actual page width (794px for A4) so
- * getBoundingClientRect gives accurate heights.
+ * Hidden off-screen container used only for measuring element heights.
+ * Renders at actual page width (794px for A4) so offsetHeight is accurate.
+ *
+ * Uses element.placement to determine grouping:
+ *   first-page  → data-above-table  (rendered once on page 1 before itemList)
+ *   all-pages   → itemList rows measured individually via data-row-index
+ *   last-page   → data-post-table   (totals block etc., must fit on final page)
  */
 export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc }, ref) => {
   const { data, templateSnapshot } = doc
   const pageWidth = templateSnapshot.pageSize === 'A4' ? 794 : 816
   const totals = calculateTotals(data.items, data.totalsConfig)
-  const postTableElements = [...templateSnapshot.body.elements]
-    .filter((el) => !PRE_TABLE_TYPES.has(el.type))
-    .sort((a, b) => a.zIndex - b.zIndex)
+
+  const sortedBody = [...templateSnapshot.body.elements].sort((a, b) => a.zIndex - b.zIndex)
+
+  // first-page elements: everything with placement === 'first-page'
+  const aboveTableElements = sortedBody.filter(
+    (el) => el.type !== 'watermark' && (el.placement ?? 'last-page') === 'first-page',
+  )
+
+  // last-page elements: everything with placement === 'last-page' (or no placement)
+  const postTableElements = sortedBody.filter(
+    (el) => el.type !== 'watermark' && (el.placement ?? 'last-page') === 'last-page',
+  )
+
+  // The all-pages element (itemList) — find its column config for the header mock
+  const itemListEl = sortedBody.find((el) => el.placement === 'all-pages')
+  const columns: string[] = (itemListEl?.config?.columns as string[]) ?? ['name', 'qty', 'rate', 'amount']
 
   return (
     <div
@@ -43,36 +62,22 @@ export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc }, ref)
         zIndex: -1,
       }}
     >
-      {/* Bill-to block — must match BillToElement fill-mode layout exactly.
-          Fill mode always renders all 7 InlineField rows regardless of whether
-          they have values, so we do the same here with matching input elements.
-          paddingBottom: 16 captures the gap-4 between billTo and itemList. */}
-      <div data-above-table className="text-sm leading-relaxed" style={{ paddingBottom: 16 }}>
-        <div className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1">Bill To</div>
-        <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.name} placeholder="Client Name" />
-        <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.company} placeholder="Company" />
-        <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.address} placeholder="Address" />
-        <div className="flex gap-1">
-          <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.city} placeholder="City" />
-          <input readOnly className="w-16 bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.state} placeholder="State" />
-          <input readOnly className="w-20 bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.zip} placeholder="ZIP" />
-        </div>
-        <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.country} placeholder="Country" />
-        <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.phone} placeholder="Phone" />
-        <input readOnly className="w-full bg-transparent outline-1 outline-transparent leading-[inherit]" defaultValue={data.client.email} placeholder="Email" />
+      {/* Above-table elements (first-page placement).
+          paddingBottom: 16 captures the gap-4 between last first-page element and itemList. */}
+      <div data-above-table className="flex flex-col gap-4" style={{ paddingBottom: 16 }}>
+        {aboveTableElements.map((el) => renderAboveTableElement(el, doc, totals))}
       </div>
 
-      {/* Column header — measured to know how much space to reserve per new page */}
-      <div data-col-header className="flex w-full bg-black text-white text-sm">
+      {/* Column header — measured to know how much space to reserve per new page.
+          Renders a minimal mock matching ItemListElement's header row. */}
+      <div data-col-header className="flex w-full text-sm" style={{ background: '#000', color: '#fff' }}>
         <div className="w-8 px-3 py-2 shrink-0">#</div>
-        <div className="flex-1 px-3 py-2">Item</div>
-        <div className="flex-1 px-3 py-2 text-right">Qty</div>
-        <div className="flex-1 px-3 py-2 text-right">Rate</div>
-        <div className="flex-1 px-3 py-2 text-right">Tax %</div>
-        <div className="flex-1 px-3 py-2 text-right">Amount</div>
+        {columns.map((col) => (
+          <div key={col} className="flex-1 px-3 py-2">{col}</div>
+        ))}
       </div>
 
-      {/* Item rows */}
+      {/* Item rows — each measured individually for row-level pagination */}
       {data.items.map((item, idx) => {
         const amount = calculateLineAmount(item)
         return (
@@ -88,27 +93,64 @@ export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc }, ref)
                 <div className="text-xs text-muted-foreground">{item.description}</div>
               )}
             </div>
-            <div className="flex-1 px-3 py-2 text-right">{item.qty}</div>
-            <div className="flex-1 px-3 py-2 text-right">
-              {formatCurrency(item.rate, data.totalsConfig.currency)}
-            </div>
-            <div className="flex-1 px-3 py-2 text-right">{item.taxRate}%</div>
-            <div className="flex-1 px-3 py-2 text-right">
-              {formatCurrency(amount, data.totalsConfig.currency)}
-            </div>
+            {columns.includes('qty') && (
+              <div className="flex-1 px-3 py-2 text-right">{item.qty}</div>
+            )}
+            {columns.includes('rate') && (
+              <div className="flex-1 px-3 py-2 text-right">
+                {formatCurrency(item.rate, data.totalsConfig.currency)}
+              </div>
+            )}
+            {columns.includes('tax') && (
+              <div className="flex-1 px-3 py-2 text-right">{item.taxRate}%</div>
+            )}
+            {(columns.includes('amount') || columns.includes('discount')) && (
+              <div className="flex-1 px-3 py-2 text-right">
+                {formatCurrency(amount, data.totalsConfig.currency)}
+              </div>
+            )}
           </div>
         )
       })}
 
-      {/* Post-table elements — measured as a combined unit (paddingTop = gap-4 above first element) */}
-      <div data-post-table style={{ paddingTop: 16 }} className="flex flex-col gap-4">
-        {postTableElements.map((el) => renderPostTableElement(el, doc, totals))}
-      </div>
+      {/* Post-table elements — each measured individually for per-element pagination.
+          No wrapper div — each element gets its own data-post-el-index attribute. */}
+      {postTableElements.map((el, idx) => (
+        <div key={el.id} data-post-el-index={idx}>
+          {renderPostTableElement(el, doc, totals)}
+        </div>
+      ))}
     </div>
   )
 })
 
 MeasureContainer.displayName = 'MeasureContainer'
+
+function renderAboveTableElement(
+  el: TemplateElement,
+  doc: StoredDocument,
+  totals: TotalsResult,
+): React.ReactNode {
+  const { data } = doc
+  const meta = data.meta
+  switch (el.type) {
+    case 'billTo':
+      return <BillToElement key={el.id} element={el} client={data.client} />
+    case 'shipTo':
+      return <ShipToElement key={el.id} element={el} client={data.client} />
+    case 'invoiceDetails':
+      if (meta.type !== 'invoice') return null
+      return <InvoiceDetailsElement key={el.id} element={el} meta={meta} />
+    case 'estimateDetails':
+      if (meta.type !== 'estimate') return null
+      return <EstimateDetailsElement key={el.id} element={el} meta={meta} />
+    case 'receiptDetails':
+      if (meta.type !== 'receipt') return null
+      return <ReceiptDetailsElement key={el.id} element={el} meta={meta} />
+    default:
+      return null
+  }
+}
 
 function renderPostTableElement(
   el: TemplateElement,

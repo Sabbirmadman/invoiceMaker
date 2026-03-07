@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Plus, FileText, ClipboardList, Receipt } from 'lucide-react'
+import { Plus, FileText, ClipboardList, Receipt, LayoutTemplate } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { DocumentList } from '@/components/document-list/DocumentList'
@@ -17,6 +17,10 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold tracking-tight">Invoice Maker</h1>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => navigate('/template-editor')}>
+              <LayoutTemplate className="size-4 mr-2" />
+              Templates
+            </Button>
             <Button variant="outline" onClick={() => navigate('/new/estimate')}>
               <ClipboardList className="size-4 mr-2" />
               New Estimate

@@ -60,6 +60,7 @@ export const simpleReceipt: Template = {
       {
         id: 'el_bill_to',
         type: 'billTo',
+        placement: 'first-page',
         zIndex: 3,
         bindings: {
           name: '{{client.name}}',
@@ -70,6 +71,7 @@ export const simpleReceipt: Template = {
       {
         id: 'el_items',
         type: 'itemList',
+        placement: 'all-pages',
         zIndex: 3,
         config: {
           columns: ['name', 'qty', 'rate', 'amount'],
@@ -84,6 +86,7 @@ export const simpleReceipt: Template = {
       {
         id: 'el_totals',
         type: 'totalsBlock',
+        placement: 'last-page',
         zIndex: 3,
         config: {
           show: ['subTotal', 'tax1', 'total'],

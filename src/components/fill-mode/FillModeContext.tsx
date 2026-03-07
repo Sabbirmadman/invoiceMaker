@@ -3,6 +3,7 @@ import type { DocumentData, CompanyData, ClientData, InvoiceMeta, EstimateMeta, 
 
 interface FillModeContextValue {
   fillMode: boolean
+  showBounds: boolean
   docId: string
   onUpdateCompany: (patch: Partial<CompanyData>) => void
   onUpdateClient: (patch: Partial<ClientData>) => void
@@ -18,6 +19,7 @@ interface FillModeContextValue {
 
 const FillModeContext = createContext<FillModeContextValue>({
   fillMode: false,
+  showBounds: false,
   docId: '',
   onUpdateCompany: () => {},
   onUpdateClient: () => {},
