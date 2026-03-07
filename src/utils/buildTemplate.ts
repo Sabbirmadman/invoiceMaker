@@ -24,7 +24,11 @@ export interface WizardState {
   // Step 3: Header
   headerHeight: number
   headerBackground: string
+  headerBackgroundImage: string       // DataURL or empty
+  headerBackgroundSize: 'cover' | 'contain' | 'repeat'
   headerColumns: ColumnConfig[]
+  logoFit: 'contain' | 'cover' | 'fill'
+  logoMaxHeight: string               // e.g. '80px' or '100%'
 
   // Step 4: Body elements
   showBillTo: boolean
@@ -38,9 +42,16 @@ export interface WizardState {
   showNotes: boolean
   showTerms: boolean
 
+  // Body background
+  bodyBackgroundColor: string
+  bodyBackgroundImage: string         // DataURL or empty
+  bodyBackgroundSize: 'cover' | 'contain' | 'repeat'
+
   // Footer
   footerHeight: number
   footerBackground: string
+  footerBackgroundImage: string       // DataURL or empty
+  footerBackgroundSize: 'cover' | 'contain' | 'repeat'
   footerBorderColor: string
   footerColumns: ColumnConfig[]
 }
@@ -55,10 +66,14 @@ export function defaultWizardState(): WizardState {
     fontFamily: 'system-ui, sans-serif',
     headerHeight: 140,
     headerBackground: '#ffffff',
+    headerBackgroundImage: '',
+    headerBackgroundSize: 'cover',
     headerColumns: [
       { width: '50%', element: 'companyDetails' },
       { width: '50%', element: 'detailsBlock' },
     ],
+    logoFit: 'contain',
+    logoMaxHeight: '80px',
     showBillTo: true,
     showShipTo: false,
     showDetailsBlock: false, // already in header by default
@@ -69,8 +84,13 @@ export function defaultWizardState(): WizardState {
     totalsShow: ['subTotal', 'tax1', 'total', 'balanceDue'],
     showNotes: true,
     showTerms: true,
+    bodyBackgroundColor: '',
+    bodyBackgroundImage: '',
+    bodyBackgroundSize: 'cover',
     footerHeight: 80,
     footerBackground: '#f9fafb',
+    footerBackgroundImage: '',
+    footerBackgroundSize: 'cover',
     footerBorderColor: '#e5e7eb',
     footerColumns: [
       { width: '70%', element: 'notes' },
@@ -138,6 +158,8 @@ function headerSlotElement(
   rowId: string,
   docType: DocumentType,
   textLabelText?: string,
+  logoFit?: string,
+  logoMaxHeight?: string,
 ): TemplateElement | null {
   switch (slot) {
     case 'logo':
@@ -146,7 +168,11 @@ function headerSlotElement(
         type: 'logo',
         zIndex: 5,
         gridArea: { col: colId, row: rowId },
-        styles: { maxHeight: '80px' },
+        styles: {
+          maxHeight: logoMaxHeight ?? '80px',
+          objectFit: logoFit ?? 'contain',
+          ...(logoFit === 'fill' ? { width: '100%', height: '100%' } : {}),
+        },
       }
     case 'companyDetails':
       return {
@@ -226,12 +252,22 @@ export function buildTemplateFromWizard(state: WizardState, templateId?: string)
   const headerColIds = state.headerColumns.map((_, i) => `col_h${i + 1}`)
   const headerRowId = 'row_h1'
 
+  const headerBgStyles: Record<string, string> = {
+    backgroundColor: state.headerBackground,
+  }
+  if (state.headerBackgroundImage) {
+    headerBgStyles.backgroundImage = `url('${state.headerBackgroundImage}')`
+    headerBgStyles.backgroundSize = state.headerBackgroundSize
+    headerBgStyles.backgroundPosition = 'center'
+    headerBgStyles.backgroundRepeat = state.headerBackgroundSize === 'repeat' ? 'repeat' : 'no-repeat'
+  }
+
   const headerElements: TemplateElement[] = [
     {
       id: uid('el_hdr_bg'),
       type: 'background',
       zIndex: 1,
-      styles: { backgroundColor: state.headerBackground },
+      styles: headerBgStyles,
     },
   ]
   state.headerColumns.forEach((col, i) => {
@@ -241,6 +277,8 @@ export function buildTemplateFromWizard(state: WizardState, templateId?: string)
       headerRowId,
       state.documentType,
       col.textLabelText,
+      state.logoFit,
+      state.logoMaxHeight,
     )
     if (el) headerElements.push(el)
   })
@@ -344,15 +382,23 @@ export function buildTemplateFromWizard(state: WizardState, templateId?: string)
   const footerColIds = state.footerColumns.map((_, i) => `col_f${i + 1}`)
   const footerRowId = 'row_f1'
 
+  const footerBgStyles: Record<string, string> = {
+    backgroundColor: state.footerBackground,
+    borderTop: `1px solid ${state.footerBorderColor}`,
+  }
+  if (state.footerBackgroundImage) {
+    footerBgStyles.backgroundImage = `url('${state.footerBackgroundImage}')`
+    footerBgStyles.backgroundSize = state.footerBackgroundSize
+    footerBgStyles.backgroundPosition = 'center'
+    footerBgStyles.backgroundRepeat = state.footerBackgroundSize === 'repeat' ? 'repeat' : 'no-repeat'
+  }
+
   const footerElements: TemplateElement[] = [
     {
       id: uid('el_ftr_bg'),
       type: 'background',
       zIndex: 1,
-      styles: {
-        backgroundColor: state.footerBackground,
-        borderTop: `1px solid ${state.footerBorderColor}`,
-      },
+      styles: footerBgStyles,
     },
   ]
   state.footerColumns.forEach((col, i) => {
@@ -384,6 +430,13 @@ export function buildTemplateFromWizard(state: WizardState, templateId?: string)
       fontFamily: state.fontFamily,
       primaryColor: state.primaryColor,
       accentColor: state.accentColor,
+      ...(state.bodyBackgroundColor || state.bodyBackgroundImage ? {
+        bodyBackground: {
+          color: state.bodyBackgroundColor || undefined,
+          imageUrl: state.bodyBackgroundImage || undefined,
+          imageSize: state.bodyBackgroundSize,
+        },
+      } : {}),
     },
     header,
     body,

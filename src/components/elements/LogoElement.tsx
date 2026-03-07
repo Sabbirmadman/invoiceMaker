@@ -29,14 +29,20 @@ export function LogoElement({ element, company }: Props) {
 
     if (fillMode) {
         if (company.logoUrl) {
+            const fitMode = (element.styles?.objectFit ?? 'contain') as React.CSSProperties['objectFit']
+            const isFill = fitMode === 'fill' || element.styles?.width === '100%'
             return (
-                <div className="relative group inline-block">
+                <div className={`relative group ${isFill ? 'w-full h-full' : 'inline-block'}`}>
                     <img
                         src={company.logoUrl}
                         alt="Company logo"
-                        style={{
+                        style={isFill ? {
+                            width: '100%',
+                            height: '100%',
+                            objectFit: fitMode,
+                        } : {
                             maxHeight: element.styles?.maxHeight ?? "80px",
-                            objectFit: "contain",
+                            objectFit: fitMode,
                         }}
                     />
                     <button
@@ -66,7 +72,7 @@ export function LogoElement({ element, company }: Props) {
                         ? "border-blue-400 bg-blue-50"
                         : "border-muted-foreground/30 hover:border-blue-400 hover:bg-blue-50/50"
                 }`}
-                style={{ height: element.styles?.maxHeight ?? "80px" }}
+                style={{ height: element.styles?.height ?? element.styles?.maxHeight ?? "80px", width: element.styles?.width }}
             >
                 {/* Invisible file input overlays the entire zone so click lands directly on it */}
                 <input
@@ -86,13 +92,26 @@ export function LogoElement({ element, company }: Props) {
 
     if (!company.logoUrl) return null;
 
-    return (
+    const fitMode = (element.styles?.objectFit ?? 'contain') as React.CSSProperties['objectFit']
+    const isFill = fitMode === 'fill' || element.styles?.width === '100%'
+
+    return isFill ? (
+        <img
+            src={company.logoUrl}
+            alt="Company logo"
+            style={{
+                width: '100%',
+                height: '100%',
+                objectFit: fitMode,
+            }}
+        />
+    ) : (
         <img
             src={company.logoUrl}
             alt="Company logo"
             style={{
                 maxHeight: element.styles?.maxHeight ?? "80px",
-                objectFit: "contain",
+                objectFit: fitMode,
                 ...element.styles,
             }}
         />

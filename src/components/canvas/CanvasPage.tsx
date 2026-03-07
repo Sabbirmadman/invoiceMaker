@@ -30,6 +30,16 @@ export function CanvasPage({ doc, totals, pageNumber, totalPages, slice, zoom = 
       }
     : doc
 
+  const bodyBg = templateSnapshot.theme.bodyBackground
+  const pageBackgroundStyle: React.CSSProperties = {}
+  if (bodyBg?.color) pageBackgroundStyle.backgroundColor = bodyBg.color
+  if (bodyBg?.imageUrl) {
+    pageBackgroundStyle.backgroundImage = `url('${bodyBg.imageUrl}')`
+    pageBackgroundStyle.backgroundSize = bodyBg.imageSize === 'repeat' ? 'auto' : (bodyBg.imageSize ?? 'cover')
+    pageBackgroundStyle.backgroundPosition = 'center'
+    pageBackgroundStyle.backgroundRepeat = bodyBg.imageSize === 'repeat' ? 'repeat' : 'no-repeat'
+  }
+
   return (
     <div
       data-canvas-page="true"
@@ -42,6 +52,7 @@ export function CanvasPage({ doc, totals, pageNumber, totalPages, slice, zoom = 
         marginBottom: zoom < 1 ? `${dims.height * (zoom - 1)}px` : undefined,
         printColorAdjust: 'exact',
         WebkitPrintColorAdjust: 'exact',
+        ...pageBackgroundStyle,
       } as React.CSSProperties}
     >
       {/* Header */}

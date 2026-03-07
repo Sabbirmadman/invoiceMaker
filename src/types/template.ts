@@ -46,6 +46,11 @@ export interface Theme {
   primaryColor: string
   accentColor: string
   secondaryColor?: string
+  bodyBackground?: {
+    color?: string
+    imageUrl?: string
+    imageSize?: 'cover' | 'contain' | 'repeat'
+  }
 }
 
 /**

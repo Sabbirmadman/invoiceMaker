@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Check } from 'lucide-react'
+import { ArrowLeft, Check, ImagePlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -171,6 +171,89 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4" />
       <span className="text-sm">{label}</span>
     </label>
+  )
+}
+
+function ImageUploadInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (dataUrl: string) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  function handleFile(file: File) {
+    if (!file.type.startsWith('image/')) return
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be smaller than 5 MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => onChange(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  if (value) {
+    return (
+      <div>
+        <Label className="text-xs text-muted-foreground">{label}</Label>
+        <div className="mt-1 relative rounded overflow-hidden border" style={{ height: 60 }}>
+          <img src={value} alt="background" className="w-full h-full object-cover" />
+          <button
+            onClick={() => onChange('')}
+            className="absolute top-1 right-1 bg-white rounded-full shadow p-0.5"
+            title="Remove image"
+          >
+            <X className="size-3 text-destructive" />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <button
+        onClick={() => inputRef.current?.click()}
+        className="mt-1 flex items-center gap-2 w-full border border-dashed rounded px-3 py-2 text-xs text-muted-foreground hover:border-blue-400 hover:text-blue-500 transition-colors"
+      >
+        <ImagePlus className="size-4 shrink-0" />
+        <span>Upload image…</span>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) handleFile(file)
+            e.target.value = ''
+          }}
+        />
+      </button>
+    </div>
+  )
+}
+
+function BgSizeSelect({ value, onChange }: { value: string; onChange: (v: 'cover' | 'contain' | 'repeat') => void }) {
+  return (
+    <div>
+      <Label className="text-xs text-muted-foreground">Image Fit</Label>
+      <Select value={value} onValueChange={(v) => onChange(v as 'cover' | 'contain' | 'repeat')}>
+        <SelectTrigger className="h-8 mt-1">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="cover">Cover (fill, crop)</SelectItem>
+          <SelectItem value="contain">Contain (fit, no crop)</SelectItem>
+          <SelectItem value="repeat">Tile (repeat)</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
   )
 }
 
@@ -426,7 +509,7 @@ export default function TemplateEditorPage() {
                 />
               </div>
               <div>
-                <Label>Background</Label>
+                <Label>Background Color</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="size-8 rounded border overflow-hidden shrink-0" style={{ backgroundColor: state.headerBackground }}>
                     <input type="color" value={state.headerBackground} onChange={(e) => patch({ headerBackground: e.target.value })} className="opacity-0 w-full h-full cursor-pointer" />
@@ -435,6 +518,43 @@ export default function TemplateEditorPage() {
                 </div>
               </div>
             </div>
+            <div className="space-y-2">
+              <ImageUploadInput
+                label="Header Background Image"
+                value={state.headerBackgroundImage}
+                onChange={(v) => patch({ headerBackgroundImage: v })}
+              />
+              {state.headerBackgroundImage && (
+                <BgSizeSelect value={state.headerBackgroundSize} onChange={(v) => patch({ headerBackgroundSize: v })} />
+              )}
+            </div>
+            {state.headerColumns.some((c) => c.element === 'logo') && (
+              <div className="space-y-3 border rounded p-3 bg-muted/30">
+                <p className="text-xs font-medium text-muted-foreground">Logo Options</p>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Max Height (px)</Label>
+                  <Input
+                    value={state.logoMaxHeight}
+                    onChange={(e) => patch({ logoMaxHeight: e.target.value })}
+                    className="h-7 text-xs mt-0.5"
+                    placeholder="e.g. 80px"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Fit Mode</Label>
+                  <Select value={state.logoFit} onValueChange={(v) => patch({ logoFit: v as typeof state.logoFit })}>
+                    <SelectTrigger className="h-8 mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="contain">Contain (letterbox)</SelectItem>
+                      <SelectItem value="cover">Cover (fill, crop)</SelectItem>
+                      <SelectItem value="fill">Stretch (fill cell)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
             <div>
               <Label className="mb-2 block">Column Layout</Label>
               <ColumnConfigurator
@@ -520,6 +640,41 @@ export default function TemplateEditorPage() {
               </div>
             </div>
 
+            {/* Page / body background */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Page Background</p>
+              <div className="flex items-center gap-3">
+                <div
+                  className="size-8 rounded border cursor-pointer shrink-0 overflow-hidden"
+                  style={{ backgroundColor: state.bodyBackgroundColor || '#ffffff' }}
+                >
+                  <input
+                    type="color"
+                    value={state.bodyBackgroundColor || '#ffffff'}
+                    onChange={(e) => patch({ bodyBackgroundColor: e.target.value === '#ffffff' ? '' : e.target.value })}
+                    className="opacity-0 w-full h-full cursor-pointer"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs text-muted-foreground">Background Color</Label>
+                  <Input
+                    value={state.bodyBackgroundColor}
+                    onChange={(e) => patch({ bodyBackgroundColor: e.target.value })}
+                    placeholder="#ffffff (leave blank for white)"
+                    className="h-7 text-xs font-mono mt-0.5"
+                  />
+                </div>
+              </div>
+              <ImageUploadInput
+                label="Page Background Image"
+                value={state.bodyBackgroundImage}
+                onChange={(v) => patch({ bodyBackgroundImage: v })}
+              />
+              {state.bodyBackgroundImage && (
+                <BgSizeSelect value={state.bodyBackgroundSize} onChange={(v) => patch({ bodyBackgroundSize: v })} />
+              )}
+            </div>
+
             {/* Footer */}
             <div>
               <p className="text-sm font-medium mb-3">Footer</p>
@@ -536,7 +691,7 @@ export default function TemplateEditorPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Background</Label>
+                  <Label className="text-xs text-muted-foreground">Background Color</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <div className="size-8 rounded border overflow-hidden shrink-0" style={{ backgroundColor: state.footerBackground }}>
                       <input type="color" value={state.footerBackground} onChange={(e) => patch({ footerBackground: e.target.value })} className="opacity-0 w-full h-full cursor-pointer" />
@@ -544,6 +699,16 @@ export default function TemplateEditorPage() {
                     <Input value={state.footerBackground} onChange={(e) => patch({ footerBackground: e.target.value })} className="h-7 text-xs font-mono" />
                   </div>
                 </div>
+              </div>
+              <div className="mb-3 space-y-2">
+                <ImageUploadInput
+                  label="Footer Background Image"
+                  value={state.footerBackgroundImage}
+                  onChange={(v) => patch({ footerBackgroundImage: v })}
+                />
+                {state.footerBackgroundImage && (
+                  <BgSizeSelect value={state.footerBackgroundSize} onChange={(v) => patch({ footerBackgroundSize: v })} />
+                )}
               </div>
               <div className="mb-3">
                 <Label className="text-xs text-muted-foreground">Border Color</Label>
