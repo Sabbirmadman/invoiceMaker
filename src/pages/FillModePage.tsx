@@ -82,7 +82,7 @@ export default function FillModePage() {
             <div className="min-h-screen bg-muted/20 flex flex-col">
                 {/* Toolbar */}
                 <header className="border-b bg-card sticky top-0 z-10">
-                    <div className="px-4 py-2 flex items-center gap-3">
+                    <div className="px-4 h-11 flex items-center gap-3">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -93,7 +93,7 @@ export default function FillModePage() {
                         <span className="font-medium text-sm">
                             {doc.data.meta.number}
                         </span>
-                        <span className="text-xs text-muted-foreground capitalize bg-muted px-2 py-0.5 rounded">
+                        <span className="text-xs text-muted-foreground capitalize">
                             {doc.documentType}
                         </span>
                         <div className="ml-auto flex items-center gap-2">

@@ -42,7 +42,7 @@ export default function PreviewPage() {
     <FillModeProvider value={previewCtx}>
       <div className="min-h-screen bg-muted/20 flex flex-col">
         <header className="border-b bg-card sticky top-0 z-10 print:hidden">
-          <div className="px-4 py-2 flex items-center gap-3">
+          <div className="px-4 h-11 flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate(`/document/${id}`)}>
               <ArrowLeft className="size-4" />
             </Button>

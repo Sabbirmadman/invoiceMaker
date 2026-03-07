@@ -475,7 +475,7 @@ function ColumnConfigurator({
                     key={i}
                     className="border rounded-md p-3 space-y-2 bg-muted/20"
                 >
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <p className="text-xs font-medium text-muted-foreground">
                         Column {i + 1}
                     </p>
                     <div className="grid grid-cols-2 gap-2">
@@ -1344,7 +1344,7 @@ export default function TemplateEditorPage() {
             <div className="min-h-screen bg-background flex flex-col">
                 {/* Top bar */}
                 <header className="border-b bg-card shrink-0 z-10">
-                    <div className="px-4 py-3 flex items-center justify-between">
+                    <div className="px-4 h-12 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <Button
                                 variant="ghost"
@@ -1354,12 +1354,10 @@ export default function TemplateEditorPage() {
                                 <ArrowLeft className="size-4 mr-1" />
                                 Back
                             </Button>
-                            <span className="text-muted-foreground select-none">
-                                |
-                            </span>
-                            <h1 className="text-base font-semibold">
+                            <span className="text-muted-foreground/40 select-none">|</span>
+                            <span className="text-sm font-semibold">
                                 {editId ? "Edit Template" : "New Template"}
-                            </h1>
+                            </span>
                         </div>
                         <Button
                             onClick={handleSave}
@@ -1414,11 +1412,8 @@ export default function TemplateEditorPage() {
                     {/* Live preview */}
                     <div
                         ref={previewContainerRef}
-                        className="flex-1 overflow-auto bg-muted/30 flex flex-col items-center py-8 px-6"
+                        className="flex-1 overflow-auto bg-muted/30 flex flex-col items-center py-6 px-6"
                     >
-                        <p className="text-xs text-muted-foreground mb-6 uppercase tracking-widest font-medium">
-                            Live Preview
-                        </p>
                         <div
                             style={{
                                 transform: `scale(${previewScale})`,
