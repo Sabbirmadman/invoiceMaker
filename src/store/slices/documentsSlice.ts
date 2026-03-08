@@ -1,7 +1,10 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import { loadDocuments } from '@/services/storage'
 import type { StoredDocument, DocumentData } from '@/types/document'
-import type { Template } from '@/types/template'
+import type { AnyTemplate } from '@/types/template'
+import { isTemplateV2 } from '@/types/templateV2'
+import { ensureV2 } from '@/utils/migrateTemplate'
+import type { TemplateV2 } from '@/types/templateV2'
 import type { DocumentType } from '@/types/common'
 
 interface DocumentsState {
@@ -132,18 +135,20 @@ const documentsSlice = createSlice({
   reducers: {
     createDocument(
       state,
-      action: PayloadAction<{ template: Template; type: DocumentType; id?: string }>,
+      action: PayloadAction<{ template: AnyTemplate; type: DocumentType; id?: string }>,
     ) {
       const { template, type } = action.payload
       const id = action.payload.id ?? generateId()
       const docNumber = generateDocNumber(type, state.documents)
       const now = new Date().toISOString()
+      // Always store a V2 snapshot (auto-migrate V1 if needed)
+      const v2Template: TemplateV2 = isTemplateV2(template) ? template : ensureV2(template as import('@/types/template').Template)
       const doc: StoredDocument = {
         id,
         createdAt: now,
         updatedAt: now,
         documentType: type,
-        templateSnapshot: structuredClone(template),
+        templateSnapshot: structuredClone(v2Template),
         data: createEmptyData(type, docNumber),
       }
       state.documents.unshift(doc)
@@ -189,10 +194,17 @@ const documentsSlice = createSlice({
     ) {
       const doc = state.documents.find((d) => d.id === action.payload.id)
       if (!doc) return
-      const itemListEl = doc.templateSnapshot.body.elements.find((el) => el.type === 'itemList')
-      if (!itemListEl) return
-      itemListEl.config = { ...itemListEl.config, ...action.payload.config }
-      doc.updatedAt = new Date().toISOString()
+      // Find itemList widget in V2 body grids
+      for (const grid of doc.templateSnapshot.body.grids) {
+        for (const cell of grid.cells) {
+          const widget = cell.children.find((n) => n.kind === 'widget' && n.type === 'itemList')
+          if (widget && widget.kind === 'widget') {
+            widget.config = { ...widget.config, ...action.payload.config }
+            doc.updatedAt = new Date().toISOString()
+            return
+          }
+        }
+      }
     },
   },
 })

@@ -1,5 +1,5 @@
 import type { StoredDocument } from '@/types/document'
-import type { Template } from '@/types/template'
+import type { AnyTemplate } from '@/types/template'
 
 const DOCUMENTS_KEY = 'invoice_maker_documents'
 const CUSTOM_TEMPLATES_KEY = 'invoice_maker_custom_templates'
@@ -18,16 +18,16 @@ export function saveDocuments(documents: StoredDocument[]): void {
   localStorage.setItem(DOCUMENTS_KEY, JSON.stringify(documents))
 }
 
-export function loadCustomTemplates(): Template[] {
+export function loadCustomTemplates(): AnyTemplate[] {
   try {
     const raw = localStorage.getItem(CUSTOM_TEMPLATES_KEY)
     if (!raw) return []
-    return JSON.parse(raw) as Template[]
+    return JSON.parse(raw) as AnyTemplate[]
   } catch {
     return []
   }
 }
 
-export function saveCustomTemplates(templates: Template[]): void {
+export function saveCustomTemplates(templates: AnyTemplate[]): void {
   localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(templates))
 }

@@ -31,7 +31,7 @@ export default function NewDocumentPage() {
 
     function handleEdit(e: React.MouseEvent, templateId: string) {
         e.stopPropagation();
-        navigate(`/template-editor/${templateId}`);
+        navigate(`/template-editor-v2/${templateId}`);
     }
 
     return (
@@ -53,7 +53,7 @@ export default function NewDocumentPage() {
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/template-editor`)}
+                        onClick={() => navigate(`/template-editor-v2`)}
                     >
                         <Plus className="size-4 mr-1.5" />
                         New Template
@@ -73,7 +73,7 @@ export default function NewDocumentPage() {
                         </p>
                         <Button
                             size="sm"
-                            onClick={() => navigate(`/template-editor`)}
+                            onClick={() => navigate(`/template-editor-v2`)}
                         >
                             <Plus className="size-4 mr-1.5" />
                             Create Template

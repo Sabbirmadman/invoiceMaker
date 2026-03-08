@@ -1,6 +1,7 @@
 import { Document, Page, View } from "@react-pdf/renderer";
 import type { StoredDocument } from "@/types/document";
 import type { TemplateElement } from "@/types/template";
+import type { TemplateWidget, SectionGridV2, BodySectionV2 } from "@/types/templateV2";
 import { resolvePdfFont } from "./fonts";
 import { calculateTotals } from "@/services/calculations";
 import { renderHeaderEl } from "./renderHeader";
@@ -9,55 +10,61 @@ import { renderFooterEl } from "./renderFooter";
 import { TemplateItemsTable } from "./ItemsTable";
 
 // ---------------------------------------------------------------------------
-// Helpers
+// V2 helpers
 // ---------------------------------------------------------------------------
 
-function parseBorderTop(val?: string): {
-    borderTopWidth?: number;
-    borderTopColor?: string;
-} {
-    if (!val) return {};
-    const parts = val.trim().split(/\s+/);
-    return {
-        borderTopWidth: parseInt(parts[0]) || 1,
-        borderTopColor: parts[2] ?? "#e5e7eb",
-    };
+function widgetToElement(w: TemplateWidget): TemplateElement {
+    return { id: w.id, type: w.type, zIndex: 0, placement: w.placement, config: w.config, styles: w.styles, bindings: w.bindings };
 }
 
-type RenderGroup =
-    | { kind: "single"; el: TemplateElement }
-    | { kind: "grid"; rowId: string; elements: TemplateElement[] };
-
-/**
- * Groups a flat list of body elements by gridRowId.
- * Elements sharing the same gridRowId are collected into a "grid" group
- * to be rendered side-by-side in a flex row.
- */
-function groupByGridRow(elements: TemplateElement[]): RenderGroup[] {
-    const seenGridIds = new Set<string>();
-    const groups: RenderGroup[] = [];
-    for (const el of elements) {
-        if (el.gridRowId) {
-            if (!seenGridIds.has(el.gridRowId)) {
-                seenGridIds.add(el.gridRowId);
-                const rowEls = elements.filter(
-                    (e) => e.gridRowId === el.gridRowId,
-                );
-                groups.push({
-                    kind: "grid",
-                    rowId: el.gridRowId,
-                    elements: rowEls,
-                });
-            }
-        } else {
-            groups.push({ kind: "single", el });
+/** Collect widgets from a section's cells sorted by position */
+function sectionWidgets(section: SectionGridV2): TemplateWidget[] {
+    const sorted = [...section.cells].sort((a, b) => a.colStart - b.colStart || a.rowStart - b.rowStart);
+    const out: TemplateWidget[] = [];
+    for (const cell of sorted) {
+        for (const node of cell.children) {
+            if (node.kind === "widget") out.push(node);
         }
     }
-    return groups;
+    return out;
+}
+
+/** Collect all widgets from body grids */
+function bodyWidgets(body: BodySectionV2): TemplateWidget[] {
+    const out: TemplateWidget[] = [];
+    for (const grid of body.grids) {
+        for (const cell of grid.cells) {
+            for (const node of cell.children) {
+                if (node.kind === "widget") out.push(node);
+            }
+        }
+    }
+    return out;
+}
+
+/**
+ * Returns per-grid row groups: each body grid becomes a row group.
+ * Widgets within a grid are laid out side-by-side using their colWidths.
+ */
+function bodyGridRows(body: BodySectionV2): Array<{ gridId: string; widgets: TemplateWidget[]; colWidths: string[] }> {
+    return body.grids.map((grid) => {
+        const sortedCells = [...grid.cells].sort((a, b) => a.colStart - b.colStart);
+        const widgets: TemplateWidget[] = [];
+        const colWidths: string[] = [];
+        for (const cell of sortedCells) {
+            for (const node of cell.children) {
+                if (node.kind === "widget") {
+                    widgets.push(node);
+                    colWidths.push(grid.grid.colWidths[cell.colStart - 1] ?? `${(100 / grid.grid.columns).toFixed(1)}%`);
+                }
+            }
+        }
+        return { gridId: grid.id, widgets, colWidths };
+    });
 }
 
 // ---------------------------------------------------------------------------
-// PDF Document component — fully template-driven
+// PDF Document component — V2 template-driven
 // ---------------------------------------------------------------------------
 
 export function PdfDocument({ doc }: { doc: StoredDocument }) {
@@ -66,91 +73,54 @@ export function PdfDocument({ doc }: { doc: StoredDocument }) {
     const font = resolvePdfFont(theme.fontFamily);
     const totals = calculateTotals(data.items, data.totalsConfig);
 
-    const bodyEls = body.elements;
-    const itemListEl = bodyEls.find((e) => e.type === "itemList");
-    const itemColumns = (itemListEl?.config?.columns as string[]) ?? [
-        "name",
-        "qty",
-        "rate",
-        "amount",
-    ];
-    const tableHeaderBg =
-        itemListEl?.styles?.headerBackground ?? theme.primaryColor;
-    const tableHeaderColor = itemListEl?.styles?.headerColor ?? "#ffffff";
-    const altRowColor = itemListEl?.styles?.alternateRowColor ?? "#f9fafb";
+    // Find itemList widget in V2 body grids
+    const allBodyW = bodyWidgets(body);
+    const itemListW = allBodyW.find((w) => w.placement === "all-pages");
+    const itemColumns = (itemListW?.config?.columns as string[]) ?? ["name", "qty", "rate", "amount"];
+    const tableHeaderBg = itemListW?.styles?.headerBackground ?? theme.primaryColor;
+    const tableHeaderColor = itemListW?.styles?.headerColor ?? "#ffffff";
+    const altRowColor = itemListW?.styles?.alternateRowColor ?? "#f9fafb";
 
-    // First-page elements (before item table): may include grid-row groups
-    const preTableEls = bodyEls.filter(
-        (e) =>
-            e.type !== "itemList" &&
-            (e.placement ?? "last-page") === "first-page",
+    // Pre-table grid rows (first-page widgets, grouped by grid)
+    const preTableRows = bodyGridRows(body).filter((row) =>
+        row.widgets.some((w) => (w.placement ?? "last-page") === "first-page")
     );
-    // Last-page elements (after item table)
-    const postTableEls = bodyEls.filter(
-        (e) =>
-            e.type !== "itemList" &&
-            (e.placement ?? "last-page") === "last-page",
-    );
+    // Post-table widgets (last-page)
+    const postTableW = allBodyW.filter((w) => (w.placement ?? "last-page") === "last-page");
 
-    const preTableGroups = groupByGridRow(preTableEls);
-    const footerHeight = footer.visible ? footer.height : 0;
+    const footerHeight = footer.visible ? (footer.height ?? 60) : 0;
+    const headerHeight = header.visible ? (header.height ?? 120) : 0;
+
+    // Header widgets sorted by column
+    const headerW = sectionWidgets(header);
+    const footerW = sectionWidgets(footer);
 
     return (
         <Document>
             <Page
                 size={pageSize === "Letter" ? "LETTER" : "A4"}
-                style={{
-                    fontFamily: font,
-                    fontSize: 10,
-                    color: "#1a1a1a",
-                    paddingBottom: footerHeight + 8,
-                }}
+                style={{ fontFamily: font, fontSize: 10, color: "#1a1a1a", paddingBottom: footerHeight + 8 }}
             >
                 {/* ── HEADER ─────────────────────────────────────────── */}
                 {header.visible && (
-                    <View
-                        style={{
-                            minHeight: header.height,
-                            flexDirection: "row",
-                            position: "relative",
-                        }}
-                    >
-                        {header.elements
-                            .filter((e) => e.type === "background")
-                            .map((bg) => (
-                                <View
-                                    key={bg.id}
-                                    style={{
-                                        position: "absolute",
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        backgroundColor:
-                                            bg.styles?.backgroundColor ??
-                                            "#ffffff",
-                                    }}
-                                />
-                            ))}
-                        {header.grid.columns.map((col) => {
-                            const el = header.elements.find(
-                                (e) =>
-                                    e.gridArea?.col === col.id &&
-                                    e.type !== "background",
-                            );
+                    <View style={{ minHeight: headerHeight, flexDirection: "row" }}>
+                        {header.background?.color && (
+                            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: header.background.color }} />
+                        )}
+                        {header.grid.colWidths.map((w, i) => {
+                            const widget = headerW.find((hw) => {
+                                const cell = header.cells.find((c) => c.children.some((n) => n.kind === "widget" && n.id === hw.id));
+                                return cell ? cell.colStart === i + 1 : false;
+                            });
+                            const el = widget ? widgetToElement(widget) : null;
                             const align = el?.styles?.textAlign;
                             return (
                                 <View
-                                    key={col.id}
+                                    key={i}
                                     style={{
-                                        width: col.width,
+                                        width: w,
                                         padding: 12,
-                                        alignItems:
-                                            align === "right"
-                                                ? "flex-end"
-                                                : align === "center"
-                                                  ? "center"
-                                                  : "flex-start",
+                                        alignItems: align === "right" ? "flex-end" : align === "center" ? "center" : "flex-start",
                                     }}
                                 >
                                     {el ? renderHeaderEl(el, doc, font) : null}
@@ -162,59 +132,25 @@ export function PdfDocument({ doc }: { doc: StoredDocument }) {
 
                 {/* ── BODY ───────────────────────────────────────────── */}
                 <View style={{ padding: 16, flex: 1 }}>
-                    {/* Pre-table: first-page elements, grid rows rendered side-by-side */}
-                    {preTableGroups.map((group) => {
-                        if (group.kind === "grid") {
-                            return (
-                                <View
-                                    key={group.rowId}
-                                    style={{
-                                        flexDirection: "row",
-                                        flexWrap: "nowrap",
-                                        marginBottom: 8,
-                                    }}
-                                >
-                                    {group.elements.map((el) => {
-                                        // Use proportional flex so columns share space
-                                        // correctly without relying on percentage widths
-                                        const pct = parseFloat(
-                                            el.styles?.gridColWidth ?? "50",
-                                        );
-                                        return (
-                                            <View
-                                                key={el.id}
-                                                style={{
-                                                    flex: pct,
-                                                    minWidth: 0,
-                                                }}
-                                            >
-                                                {renderBodyEl(
-                                                    el,
-                                                    doc,
-                                                    totals,
-                                                    font,
-                                                    theme,
-                                                )}
-                                            </View>
-                                        );
-                                    })}
-                                </View>
-                            );
+                    {preTableRows.map((row) => {
+                        if (row.widgets.length === 1) {
+                            const el = widgetToElement(row.widgets[0]);
+                            return <View key={row.gridId}>{renderBodyEl(el, doc, totals, font, theme)}</View>;
                         }
                         return (
-                            <View key={group.el.id}>
-                                {renderBodyEl(
-                                    group.el,
-                                    doc,
-                                    totals,
-                                    font,
-                                    theme,
-                                )}
+                            <View key={row.gridId} style={{ flexDirection: "row", flexWrap: "nowrap", marginBottom: 8 }}>
+                                {row.widgets.map((w, i) => {
+                                    const pct = parseFloat(row.colWidths[i] ?? "50");
+                                    return (
+                                        <View key={w.id} style={{ flex: pct, minWidth: 0 }}>
+                                            {renderBodyEl(widgetToElement(w), doc, totals, font, theme)}
+                                        </View>
+                                    );
+                                })}
                             </View>
                         );
                     })}
 
-                    {/* Item table */}
                     <TemplateItemsTable
                         items={data.items}
                         columns={itemColumns}
@@ -225,70 +161,32 @@ export function PdfDocument({ doc }: { doc: StoredDocument }) {
                         font={font}
                     />
 
-                    {/* Post-table: last-page elements */}
-                    {postTableEls.map((el) => (
-                        <View key={el.id}>
-                            {renderBodyEl(el, doc, totals, font, theme)}
-                        </View>
+                    {postTableW.map((w) => (
+                        <View key={w.id}>{renderBodyEl(widgetToElement(w), doc, totals, font, theme)}</View>
                     ))}
                 </View>
 
                 {/* ── FOOTER ─────────────────────────────────────────── */}
                 {footer.visible && (
-                    <View
-                        fixed
-                        style={{
-                            position: "absolute",
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            height: footer.height,
-                            flexDirection: "row",
-                        }}
-                    >
-                        {footer.elements
-                            .filter((e) => e.type === "background")
-                            .map((bg) => {
-                                const border = parseBorderTop(
-                                    bg.styles?.borderTop,
-                                );
-                                return (
-                                    <View
-                                        key={bg.id}
-                                        style={{
-                                            position: "absolute",
-                                            top: 0,
-                                            left: 0,
-                                            right: 0,
-                                            bottom: 0,
-                                            backgroundColor:
-                                                bg.styles?.backgroundColor ??
-                                                "#f9fafb",
-                                            ...border,
-                                        }}
-                                    />
-                                );
-                            })}
-                        {footer.grid.columns.map((col) => {
-                            const el = footer.elements.find(
-                                (e) =>
-                                    e.gridArea?.col === col.id &&
-                                    e.type !== "background",
-                            );
+                    <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: footerHeight, flexDirection: "row" }}>
+                        {footer.background?.color && (
+                            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: footer.background.color }} />
+                        )}
+                        {footer.grid.colWidths.map((w, i) => {
+                            const widget = footerW.find((fw) => {
+                                const cell = footer.cells.find((c) => c.children.some((n) => n.kind === "widget" && n.id === fw.id));
+                                return cell ? cell.colStart === i + 1 : false;
+                            });
+                            const el = widget ? widgetToElement(widget) : null;
                             const align = el?.styles?.textAlign;
                             return (
                                 <View
-                                    key={col.id}
+                                    key={i}
                                     style={{
-                                        width: col.width,
+                                        width: w,
                                         padding: 8,
                                         justifyContent: "center",
-                                        alignItems:
-                                            align === "right"
-                                                ? "flex-end"
-                                                : align === "center"
-                                                  ? "center"
-                                                  : "flex-start",
+                                        alignItems: align === "right" ? "flex-end" : align === "center" ? "center" : "flex-start",
                                     }}
                                 >
                                     {el ? renderFooterEl(el, doc) : null}

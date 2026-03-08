@@ -37,7 +37,7 @@ export default function HomePage() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate("/template-editor")}
+                            onClick={() => navigate("/template-editor-v2")}
                         >
                             <LayoutTemplate className="size-4 mr-1.5" />
                             Templates

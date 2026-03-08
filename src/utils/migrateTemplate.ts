@@ -253,3 +253,4 @@ export function ensureV2(template: Template | TemplateV2): TemplateV2 {
     if ("version" in template && template.version === 2) return template as TemplateV2;
     return migrateToV2(template as Template);
 }
+

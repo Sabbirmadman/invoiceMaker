@@ -52,27 +52,35 @@ export function usePagination(doc: StoredDocument, fillMode = false): Pagination
   const { pageSize, header, footer } = templateSnapshot
   const dims = PAGE_DIMENSIONS[pageSize]
 
-  const headerH = header.visible ? header.height : 0
-  const footerH = footer.visible ? footer.height : 0
+  const headerH = header.visible ? (header.height ?? 120) : 0
+  const footerH = footer.visible ? (footer.height ?? 60) : 0
   const availableH = dims.height - headerH - footerH - BODY_PADDING
 
-  const itemListEl = templateSnapshot.body.elements.find((el) => el.type === 'itemList')
-  const maxRowsPerPage = (itemListEl?.config?.maxRowsPerPage as number) ?? 0
+  // Collect all body widgets from V2 grids
+  const allBodyWidgets: import('@/types/templateV2').TemplateWidget[] = []
+  for (const grid of templateSnapshot.body.grids) {
+    for (const cell of grid.cells) {
+      for (const node of cell.children) {
+        if (node.kind === 'widget') allBodyWidgets.push(node)
+      }
+    }
+  }
 
-  // Collect element IDs by placement for bodyElements population
-  const sortedBody = [...templateSnapshot.body.elements].sort((a, b) => a.zIndex - b.zIndex)
-  const firstPageElIds = sortedBody
-    .filter((el) => el.type !== 'watermark' && (el.placement ?? 'last-page') === 'first-page')
-    .map((el) => el.id)
-  const postTableElIds = sortedBody
-    .filter((el) => {
-      if (el.type === 'watermark' || (el.placement ?? 'last-page') !== 'last-page') return false
-      if (!fillMode && el.type === 'notes' && !data.notes) return false
-      if (!fillMode && el.type === 'termsConditions' && !data.terms) return false
+  const itemListWidget = allBodyWidgets.find((w) => w.placement === 'all-pages')
+  const maxRowsPerPage = (itemListWidget?.config?.maxRowsPerPage as number) ?? 0
+
+  const firstPageElIds = allBodyWidgets
+    .filter((w) => w.type !== 'watermark' && (w.placement ?? 'last-page') === 'first-page')
+    .map((w) => w.id)
+  const postTableElIds = allBodyWidgets
+    .filter((w) => {
+      if (w.type === 'watermark' || (w.placement ?? 'last-page') !== 'last-page') return false
+      if (!fillMode && w.type === 'notes' && !data.notes) return false
+      if (!fillMode && w.type === 'termsConditions' && !data.terms) return false
       return true
     })
-    .map((el) => el.id)
-  const itemListId = itemListEl?.id ?? 'itemList'
+    .map((w) => w.id)
+  const itemListId = itemListWidget?.id ?? 'itemList'
 
   const measureRef = useRef<HTMLDivElement | null>(null)
   const [pages, setPages] = useState<PageSlice[]>([])

@@ -1,5 +1,5 @@
 import type { DocumentType } from './common'
-import type { Template } from './template'
+import type { TemplateV2 } from './templateV2'
 
 export interface CompanyData {
   name: string
@@ -118,6 +118,6 @@ export interface StoredDocument {
   createdAt: string
   updatedAt: string
   documentType: DocumentType
-  templateSnapshot: Template
+  templateSnapshot: TemplateV2
   data: DocumentData
 }

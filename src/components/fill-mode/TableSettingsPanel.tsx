@@ -20,9 +20,16 @@ interface Props {
 }
 
 export function TableSettingsPanel({ doc, onUpdateConfig }: Props) {
-  const itemListEl = doc.templateSnapshot.body.elements.find((el) => el.type === 'itemList')
-  const currentColumns = (itemListEl?.config?.columns as ColKey[]) ?? DEFAULT_COLUMNS
-  const maxRowsPerPage = (itemListEl?.config?.maxRowsPerPage as number) ?? 0
+  // Find itemList widget in V2 body grids
+  let itemListConfig: Record<string, unknown> | undefined
+  outer: for (const grid of doc.templateSnapshot.body.grids) {
+    for (const cell of grid.cells) {
+      const w = cell.children.find((n) => n.kind === 'widget' && n.type === 'itemList')
+      if (w && w.kind === 'widget') { itemListConfig = w.config; break outer }
+    }
+  }
+  const currentColumns = (itemListConfig?.columns as ColKey[]) ?? DEFAULT_COLUMNS
+  const maxRowsPerPage = (itemListConfig?.maxRowsPerPage as number) ?? 0
 
   function toggleColumn(key: ColKey, enabled: boolean) {
     let next: ColKey[]

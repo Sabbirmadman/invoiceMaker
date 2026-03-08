@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 import type { StoredDocument, TotalsResult } from '@/types/document'
 import { calculateTotals } from '@/services/calculations'
+import type { TemplateWidget } from '@/types/templateV2'
 import type { TemplateElement } from '@/types/template'
 import { BillToElement } from '@/components/elements/BillToElement'
 import { ShipToElement } from '@/components/elements/ShipToElement'
@@ -15,6 +16,10 @@ import { DividerElement } from '@/components/elements/DividerElement'
 import { TextLabelElement } from '@/components/elements/TextLabelElement'
 import { PageNumberElement } from '@/components/elements/PageNumberElement'
 
+function widgetToElement(w: TemplateWidget): TemplateElement {
+  return { id: w.id, type: w.type, zIndex: 0, placement: w.placement, config: w.config, styles: w.styles, bindings: w.bindings }
+}
+
 interface Props {
   doc: StoredDocument
   fillMode?: boolean
@@ -22,45 +27,41 @@ interface Props {
 
 /**
  * Hidden off-screen container used only for measuring element heights.
- * Renders at actual page width so offsetHeight / offsetTop are accurate.
+ * Reads from V2 BodySectionV2 (body.grids[].cells[].children) instead of flat elements.
  *
- * CRITICAL: This container's DOM structure must mirror BodySectionRenderer exactly:
- *   - Root has padding:16 (matches p-4)
- *   - Pre-table wrapper: flex-col gap-16 (matches flex flex-col gap-4)
- *     Contains: first-page elements + ItemListElement (with data-row-index on its rows)
- *   - Post-table wrapper: marginTop:16 flex-col gap-16 (matches mt-4 gap-4)
- *     Contains: post-table elements
- *
- * Data attributes:
- *   data-measure-id        — on every element wrapper (for ResizeObserver)
- *   data-measure-placement — "first-page" | "all-pages" | "last-page"
- *   data-row-index         — on each item row (added by ItemListElement itself)
- *   data-post-el-index     — on each post-table element wrapper
+ * CRITICAL: DOM structure must mirror BodySectionRenderer exactly:
+ *   - Root: padding:16
+ *   - Pre-table wrapper: flex-col gap-16
+ *   - Post-table wrapper: marginTop:16 flex-col gap-16
  */
 export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc, fillMode = false }, ref) => {
   const { data, templateSnapshot } = doc
   const pageWidth = templateSnapshot.pageSize === 'A4' ? 794 : 816
   const totals = calculateTotals(data.items, data.totalsConfig)
 
-  const sortedBody = [...templateSnapshot.body.elements].sort((a, b) => a.zIndex - b.zIndex)
+  // Collect all widgets from all body grids
+  const allWidgets: TemplateWidget[] = []
+  for (const grid of templateSnapshot.body.grids) {
+    for (const cell of grid.cells) {
+      for (const node of cell.children) {
+        if (node.kind === 'widget') allWidgets.push(node)
+      }
+    }
+  }
 
-  // first-page elements (BillTo, ShipTo, InvoiceDetails, etc.)
-  const aboveTableElements = sortedBody.filter(
-    (el) => el.type !== 'watermark' && (el.placement ?? 'last-page') === 'first-page',
+  const aboveTableWidgets = allWidgets.filter(
+    (w) => w.type !== 'watermark' && (w.placement ?? 'last-page') === 'first-page',
   )
 
-  // last-page elements (TotalsBlock, Notes, Terms, etc.)
-  // In fill mode always include all elements; in preview/PDF skip empty notes/terms
-  const postTableElements = sortedBody.filter((el) => {
-    if (el.type === 'watermark') return false
-    if ((el.placement ?? 'last-page') !== 'last-page') return false
-    if (!fillMode && el.type === 'notes' && !data.notes) return false
-    if (!fillMode && el.type === 'termsConditions' && !data.terms) return false
+  const postTableWidgets = allWidgets.filter((w) => {
+    if (w.type === 'watermark') return false
+    if ((w.placement ?? 'last-page') !== 'last-page') return false
+    if (!fillMode && w.type === 'notes' && !data.notes) return false
+    if (!fillMode && w.type === 'termsConditions' && !data.terms) return false
     return true
   })
 
-  // all-pages element (itemList)
-  const itemListEl = sortedBody.find((el) => el.placement === 'all-pages')
+  const itemListWidget = allWidgets.find((w) => w.placement === 'all-pages')
 
   return (
     <div
@@ -71,7 +72,6 @@ export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc, fillMo
         top: -9999,
         left: -9999,
         width: pageWidth,
-        // Mirror BodySectionRenderer's p-4 exactly
         padding: 16,
         display: 'flex',
         flexDirection: 'column',
@@ -81,30 +81,17 @@ export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc, fillMo
         overflow: 'hidden',
       }}
     >
-      {/*
-       * Pre-table wrapper — mirrors BodySectionRenderer's "div.flex-col.gap-4"
-       * Contains: first-page elements (BillTo, Details…) + itemList
-       */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {aboveTableElements.map((el) => (
-          <div
-            key={el.id}
-            data-measure-id={el.id}
-            data-measure-placement="first-page"
-          >
-            {renderAboveTableElement(el, doc, totals)}
+        {aboveTableWidgets.map((w) => (
+          <div key={w.id} data-measure-id={w.id} data-measure-placement="first-page">
+            {renderAboveTableWidget(w, doc, totals)}
           </div>
         ))}
 
-        {/* ItemList — uses actual ItemListElement so row heights are pixel-accurate.
-            ItemListElement adds data-row-index to each row, which usePagination reads. */}
-        {itemListEl && (
-          <div
-            data-measure-id={itemListEl.id}
-            data-measure-placement="all-pages"
-          >
+        {itemListWidget && (
+          <div data-measure-id={itemListWidget.id} data-measure-placement="all-pages">
             <ItemListElement
-              element={itemListEl}
+              element={widgetToElement(itemListWidget)}
               items={data.items}
               currency={data.totalsConfig.currency}
               showHeader={true}
@@ -115,20 +102,11 @@ export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc, fillMo
         )}
       </div>
 
-      {/*
-       * Post-table wrapper — mirrors BodySectionRenderer's "div.flex-col.gap-4.mt-4"
-       * The marginTop:16 matches mt-4, gap:16 matches gap-4.
-       */}
-      {postTableElements.length > 0 && (
+      {postTableWidgets.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-          {postTableElements.map((el, idx) => (
-            <div
-              key={el.id}
-              data-measure-id={el.id}
-              data-measure-placement="last-page"
-              data-post-el-index={idx}
-            >
-              {renderPostTableElement(el, doc, totals)}
+          {postTableWidgets.map((w, idx) => (
+            <div key={w.id} data-measure-id={w.id} data-measure-placement="last-page" data-post-el-index={idx}>
+              {renderPostTableWidget(w, doc, totals)}
             </div>
           ))}
         </div>
@@ -139,52 +117,30 @@ export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc, fillMo
 
 MeasureContainer.displayName = 'MeasureContainer'
 
-function renderAboveTableElement(
-  el: TemplateElement,
-  doc: StoredDocument,
-  totals: TotalsResult,
-): React.ReactNode {
+function renderAboveTableWidget(w: TemplateWidget, doc: StoredDocument, totals: TotalsResult): React.ReactNode {
+  const el = widgetToElement(w)
   const { data } = doc
   const meta = data.meta
-  switch (el.type) {
-    case 'billTo':
-      return <BillToElement key={el.id} element={el} client={data.client} />
-    case 'shipTo':
-      return <ShipToElement key={el.id} element={el} client={data.client} />
-    case 'invoiceDetails':
-      if (meta.type !== 'invoice') return null
-      return <InvoiceDetailsElement key={el.id} element={el} meta={meta} />
-    case 'estimateDetails':
-      if (meta.type !== 'estimate') return null
-      return <EstimateDetailsElement key={el.id} element={el} meta={meta} />
-    case 'receiptDetails':
-      if (meta.type !== 'receipt') return null
-      return <ReceiptDetailsElement key={el.id} element={el} meta={meta} />
-    default:
-      return null
+  switch (w.type) {
+    case 'billTo': return <BillToElement element={el} client={data.client} />
+    case 'shipTo': return <ShipToElement element={el} client={data.client} />
+    case 'invoiceDetails': return meta.type === 'invoice' ? <InvoiceDetailsElement element={el} meta={meta} /> : null
+    case 'estimateDetails': return meta.type === 'estimate' ? <EstimateDetailsElement element={el} meta={meta} /> : null
+    case 'receiptDetails': return meta.type === 'receipt' ? <ReceiptDetailsElement element={el} meta={meta} /> : null
+    default: return null
   }
 }
 
-function renderPostTableElement(
-  el: TemplateElement,
-  doc: StoredDocument,
-  totals: TotalsResult,
-): React.ReactNode {
+function renderPostTableWidget(w: TemplateWidget, doc: StoredDocument, totals: TotalsResult): React.ReactNode {
+  const el = widgetToElement(w)
   const { data } = doc
-  switch (el.type) {
-    case 'totalsBlock':
-      return <TotalsBlockElement key={el.id} element={el} totals={totals} config={data.totalsConfig} />
-    case 'notes':
-      return <NotesElement key={el.id} element={el} notes={data.notes} />
-    case 'termsConditions':
-      return <TermsElement key={el.id} element={el} terms={data.terms} />
-    case 'divider':
-      return <DividerElement key={el.id} element={el} />
-    case 'textLabel':
-      return <TextLabelElement key={el.id} element={el} />
-    case 'pageNumber':
-      return <PageNumberElement key={el.id} element={el} current={1} total={1} />
-    default:
-      return null
+  switch (w.type) {
+    case 'totalsBlock': return <TotalsBlockElement element={el} totals={totals} config={data.totalsConfig} />
+    case 'notes': return <NotesElement element={el} notes={data.notes} />
+    case 'termsConditions': return <TermsElement element={el} terms={data.terms} />
+    case 'divider': return <DividerElement element={el} />
+    case 'textLabel': return <TextLabelElement element={el} />
+    case 'pageNumber': return <PageNumberElement element={el} current={1} total={1} />
+    default: return null
   }
 }
