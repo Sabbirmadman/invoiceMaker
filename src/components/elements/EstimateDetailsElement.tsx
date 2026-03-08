@@ -24,17 +24,14 @@ export function EstimateDetailsElement({ element, meta }: Props) {
     const accentColor =
         element.styles?.accentColor ?? "var(--doc-accent, #2563eb)";
 
-    const contentCols =
-        (element.config?.contentCols as number | undefined) ?? 1;
+    const layout = (element.config?.layout as string | undefined) ?? "vertical";
+    const isHorizontal = layout === "horizontal";
+    const justify = (element.config?.justify as string | undefined) ?? "stretch";
     const fieldsStyle: React.CSSProperties =
-        contentCols > 1
-            ? {
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${contentCols}, 1fr)`,
-                  gap: "0 12px",
-                  alignItems: "start",
-              }
+        isHorizontal
+            ? { display: "flex", flexDirection: "row", flexWrap: "nowrap", gap: "2px 16px", alignItems: "start", width: "100%", justifyContent: justify === "stretch" ? "flex-start" : justify }
             : {};
+    const fieldItemStyle: React.CSSProperties = isHorizontal ? { ...(justify === "stretch" ? { flex: 1 } : {}), minWidth: 0 } : { minWidth: "100px" };
 
     if (fillMode) {
         return (
@@ -42,6 +39,7 @@ export function EstimateDetailsElement({ element, meta }: Props) {
                 className="flex flex-col gap-1"
                 style={element.styles as React.CSSProperties}
             >
+                {f("title") && (
                 <div
                     className="text-2xl font-bold uppercase tracking-wide mb-2 pb-2"
                     style={{
@@ -51,12 +49,13 @@ export function EstimateDetailsElement({ element, meta }: Props) {
                 >
                     ESTIMATE
                 </div>
+                )}
                 <div
                     className="flex flex-col gap-1 text-sm"
                     style={fieldsStyle}
                 >
                     {f("number") && (
-                        <div>
+                        <div style={fieldItemStyle}>
                             <span className={LABEL_STYLE}>Estimate #</span>
                             <InlineField
                                 value={meta.number}
@@ -69,7 +68,7 @@ export function EstimateDetailsElement({ element, meta }: Props) {
                         </div>
                     )}
                     {f("date") && (
-                        <div>
+                        <div style={fieldItemStyle}>
                             <span className={LABEL_STYLE}>Date</span>
                             <input
                                 type="date"
@@ -84,7 +83,7 @@ export function EstimateDetailsElement({ element, meta }: Props) {
                         </div>
                     )}
                     {f("expiryDate") && (
-                        <div>
+                        <div style={fieldItemStyle}>
                             <span className={LABEL_STYLE}>Expiry Date</span>
                             <input
                                 type="date"
@@ -99,7 +98,7 @@ export function EstimateDetailsElement({ element, meta }: Props) {
                         </div>
                     )}
                     {f("reference") && (
-                        <div>
+                        <div style={fieldItemStyle}>
                             <span className={LABEL_STYLE}>Reference</span>
                             <InlineField
                                 value={meta.reference ?? ""}
@@ -112,7 +111,7 @@ export function EstimateDetailsElement({ element, meta }: Props) {
                         </div>
                     )}
                     {f("poNumber") && (
-                        <div>
+                        <div style={fieldItemStyle}>
                             <span className={LABEL_STYLE}>PO Number</span>
                             <InlineField
                                 value={meta.poNumber ?? ""}
@@ -125,7 +124,7 @@ export function EstimateDetailsElement({ element, meta }: Props) {
                         </div>
                     )}
                     {f("projectName") && (
-                        <div>
+                        <div style={fieldItemStyle}>
                             <span className={LABEL_STYLE}>Project</span>
                             <InlineField
                                 value={meta.projectName ?? ""}
@@ -147,6 +146,7 @@ export function EstimateDetailsElement({ element, meta }: Props) {
             className="flex flex-col gap-1"
             style={element.styles as React.CSSProperties}
         >
+            {f("title") && (
             <div
                 className="text-2xl font-bold uppercase tracking-wide mb-2 pb-2"
                 style={{
@@ -156,39 +156,40 @@ export function EstimateDetailsElement({ element, meta }: Props) {
             >
                 ESTIMATE
             </div>
+            )}
             <div style={fieldsStyle}>
                 {f("number") && (
-                    <div>
+                    <div style={fieldItemStyle}>
                         <span className={LABEL_STYLE}>Estimate #</span>
                         <div className={VALUE_STYLE}>{meta.number || "—"}</div>
                     </div>
                 )}
                 {f("date") && (
-                    <div>
+                    <div style={fieldItemStyle}>
                         <span className={LABEL_STYLE}>Date</span>
                         <div className={VALUE_STYLE}>{meta.date || "—"}</div>
                     </div>
                 )}
                 {f("expiryDate") && meta.expiryDate && (
-                    <div>
+                    <div style={fieldItemStyle}>
                         <span className={LABEL_STYLE}>Expiry Date</span>
                         <div className={VALUE_STYLE}>{meta.expiryDate}</div>
                     </div>
                 )}
                 {f("reference") && meta.reference && (
-                    <div>
+                    <div style={fieldItemStyle}>
                         <span className={LABEL_STYLE}>Reference</span>
                         <div className={VALUE_STYLE}>{meta.reference}</div>
                     </div>
                 )}
                 {f("poNumber") && meta.poNumber && (
-                    <div>
+                    <div style={fieldItemStyle}>
                         <span className={LABEL_STYLE}>PO Number</span>
                         <div className={VALUE_STYLE}>{meta.poNumber}</div>
                     </div>
                 )}
                 {f("projectName") && meta.projectName && (
-                    <div>
+                    <div style={fieldItemStyle}>
                         <span className={LABEL_STYLE}>Project</span>
                         <div className={VALUE_STYLE}>{meta.projectName}</div>
                     </div>

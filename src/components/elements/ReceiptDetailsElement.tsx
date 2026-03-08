@@ -24,17 +24,13 @@ export function ReceiptDetailsElement({ element, meta }: Props) {
     const accentColor =
         element.styles?.accentColor ?? "var(--doc-accent, #2563eb)";
 
-    const contentCols =
-        (element.config?.contentCols as number | undefined) ?? 1;
-    const fieldsStyle: React.CSSProperties =
-        contentCols > 1
-            ? {
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${contentCols}, 1fr)`,
-                  gap: "0 12px",
-                  alignItems: "start",
-              }
-            : {};
+    const layout = (element.config?.layout as string | undefined) ?? "vertical";
+    const isHorizontal = layout === "horizontal";
+    const justify = (element.config?.justify as string | undefined) ?? "stretch";
+    const fieldsStyle: React.CSSProperties = isHorizontal
+        ? { display: "flex", flexDirection: "row", flexWrap: "nowrap", gap: "2px 16px", alignItems: "start", width: "100%", justifyContent: justify === "stretch" ? "flex-start" : justify }
+        : {};
+    const fieldItemStyle: React.CSSProperties = isHorizontal ? { ...(justify === "stretch" ? { flex: 1 } : {}), minWidth: 0 } : { minWidth: "100px" };
 
     if (fillMode) {
         return (
@@ -42,21 +38,23 @@ export function ReceiptDetailsElement({ element, meta }: Props) {
                 className="flex flex-col gap-1"
                 style={element.styles as React.CSSProperties}
             >
-                <div
-                    className="text-2xl font-bold uppercase tracking-wide mb-2 pb-2"
-                    style={{
-                        color: accentColor,
-                        borderBottom: `2px solid ${accentColor}`,
-                    }}
-                >
-                    RECEIPT
-                </div>
+                {f("title") && (
+                    <div
+                        className="text-2xl font-bold uppercase tracking-wide mb-2 pb-2"
+                        style={{
+                            color: accentColor,
+                            borderBottom: `2px solid ${accentColor}`,
+                        }}
+                    >
+                        RECEIPT
+                    </div>
+                )}
                 <div
                     className="flex flex-col gap-1 text-sm"
                     style={fieldsStyle}
                 >
                     {f("number") && (
-                        <div>
+                        <div style={fieldItemStyle}>
                             <span className={LABEL_STYLE}>Receipt #</span>
                             <InlineField
                                 value={meta.number}
@@ -69,7 +67,7 @@ export function ReceiptDetailsElement({ element, meta }: Props) {
                         </div>
                     )}
                     {f("issueDate") && (
-                        <div>
+                        <div style={fieldItemStyle}>
                             <span className={LABEL_STYLE}>Issue Date</span>
                             <input
                                 type="date"
@@ -84,7 +82,7 @@ export function ReceiptDetailsElement({ element, meta }: Props) {
                         </div>
                     )}
                     {f("paymentDate") && (
-                        <div>
+                        <div style={fieldItemStyle}>
                             <span className={LABEL_STYLE}>Payment Date</span>
                             <input
                                 type="date"
@@ -99,7 +97,7 @@ export function ReceiptDetailsElement({ element, meta }: Props) {
                         </div>
                     )}
                     {f("paymentMethod") && (
-                        <div>
+                        <div style={fieldItemStyle}>
                             <span className={LABEL_STYLE}>Payment Method</span>
                             <InlineField
                                 value={meta.paymentMethod ?? ""}
@@ -112,7 +110,7 @@ export function ReceiptDetailsElement({ element, meta }: Props) {
                         </div>
                     )}
                     {f("transactionId") && (
-                        <div>
+                        <div style={fieldItemStyle}>
                             <span className={LABEL_STYLE}>Transaction ID</span>
                             <InlineField
                                 value={meta.transactionId ?? ""}
@@ -125,7 +123,7 @@ export function ReceiptDetailsElement({ element, meta }: Props) {
                         </div>
                     )}
                     {f("relatedInvoiceNumber") && (
-                        <div>
+                        <div style={fieldItemStyle}>
                             <span className={LABEL_STYLE}>
                                 Related Invoice #
                             </span>
@@ -151,24 +149,26 @@ export function ReceiptDetailsElement({ element, meta }: Props) {
             className="flex flex-col gap-1"
             style={element.styles as React.CSSProperties}
         >
-            <div
-                className="text-2xl font-bold uppercase tracking-wide mb-2 pb-2"
-                style={{
-                    color: accentColor,
-                    borderBottom: `2px solid ${accentColor}`,
-                }}
-            >
-                RECEIPT
-            </div>
+            {f("title") && (
+                <div
+                    className="text-2xl font-bold uppercase tracking-wide mb-2 pb-2"
+                    style={{
+                        color: accentColor,
+                        borderBottom: `2px solid ${accentColor}`,
+                    }}
+                >
+                    RECEIPT
+                </div>
+            )}
             <div style={fieldsStyle}>
                 {f("number") && (
-                    <div>
+                    <div style={fieldItemStyle}>
                         <span className={LABEL_STYLE}>Receipt #</span>
                         <div className={VALUE_STYLE}>{meta.number || "—"}</div>
                     </div>
                 )}
                 {f("issueDate") && (
-                    <div>
+                    <div style={fieldItemStyle}>
                         <span className={LABEL_STYLE}>Issue Date</span>
                         <div className={VALUE_STYLE}>
                             {meta.issueDate || "—"}
@@ -176,25 +176,25 @@ export function ReceiptDetailsElement({ element, meta }: Props) {
                     </div>
                 )}
                 {f("paymentDate") && meta.paymentDate && (
-                    <div>
+                    <div style={fieldItemStyle}>
                         <span className={LABEL_STYLE}>Payment Date</span>
                         <div className={VALUE_STYLE}>{meta.paymentDate}</div>
                     </div>
                 )}
                 {f("paymentMethod") && meta.paymentMethod && (
-                    <div>
+                    <div style={fieldItemStyle}>
                         <span className={LABEL_STYLE}>Payment Method</span>
                         <div className={VALUE_STYLE}>{meta.paymentMethod}</div>
                     </div>
                 )}
                 {f("transactionId") && meta.transactionId && (
-                    <div>
+                    <div style={fieldItemStyle}>
                         <span className={LABEL_STYLE}>Transaction ID</span>
                         <div className={VALUE_STYLE}>{meta.transactionId}</div>
                     </div>
                 )}
                 {f("relatedInvoiceNumber") && meta.relatedInvoiceNumber && (
-                    <div>
+                    <div style={fieldItemStyle}>
                         <span className={LABEL_STYLE}>Related Invoice #</span>
                         <div className={VALUE_STYLE}>
                             {meta.relatedInvoiceNumber}

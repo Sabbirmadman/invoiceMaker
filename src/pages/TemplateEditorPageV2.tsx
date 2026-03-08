@@ -19,11 +19,13 @@ import {
     ChevronUp,
     ChevronDown,
     Trash2,
+    ZoomIn,
+    ZoomOut,
+    Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import type { TemplateV2 } from "@/types/templateV2";
-import type { ElementType } from "@/types/template";
 
 import { useAppSelector, useAppDispatch } from "@/hooks/useAppDispatch";
 import { saveTemplateV2 } from "@/store/slices/templatesSlice";
@@ -89,7 +91,7 @@ function makeDummyDoc(template: TemplateV2): StoredDocument {
                 email: "hello@company.com",
                 website: "www.company.com",
                 taxId: "XX-XXXXXXX",
-                logoUrl: undefined,
+                logoUrl: "",
             },
             client: {
                 name: "Client Name",
@@ -109,6 +111,7 @@ function makeDummyDoc(template: TemplateV2): StoredDocument {
                 number: "INV-001",
                 date: new Date().toISOString().slice(0, 10),
                 dueDate: new Date().toISOString().slice(0, 10),
+                currency: "USD",
                 terms: "",
                 poNumber: "",
                 projectName: "",
@@ -139,8 +142,8 @@ function makeDummyDoc(template: TemplateV2): StoredDocument {
                 adjustment: 0,
                 amountPaid: 0,
             },
-            notes: "",
-            terms: "",
+            notes: "Thank you for your business! Payment is due within the specified terms.",
+            terms: "Net 30. Late payments may be subject to a 1.5% monthly fee.",
         },
     };
 }
@@ -172,6 +175,7 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
 
     const [templateName, setTemplateName] = useState(template.name);
     const [previewMode, setPreviewMode] = useState(false);
+    const [zoom, setZoom] = useState(0.75);
     // focusedSection: "header" | "footer" | a body grid id
     const [focusedSection, setFocusedSection] = useState<string>(
         template.body.grids[0]?.id ?? "body",
@@ -216,7 +220,7 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                 dropIndex,
             );
         } else if (draggingNodeId) {
-            editor.moveNode(draggingNodeId, cellId, dropIndex);
+            editor.moveNode(draggingNodeId, cellId);
         }
         endDrag();
     }
@@ -230,6 +234,16 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
     function handleCanvasClick() {
         clearSelection();
         // Don't clear section focus
+    }
+
+    function handleWheel(e: React.WheelEvent<HTMLDivElement>) {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            setZoom((z) =>
+                Math.min(3.0, Math.max(0.1, parseFloat((z + delta).toFixed(2))))
+            );
+        }
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -339,6 +353,93 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                         <Redo2 size={16} />
                     </button>
 
+                    {/* ── Zoom controls ── */}
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            margin: "0 8px",
+                            padding: "2px 8px",
+                            background: "#f1f5f9",
+                            borderRadius: 6,
+                            border: "1px solid #e2e8f0",
+                        }}
+                    >
+                        <button
+                            onClick={() =>
+                                setZoom((z) =>
+                                    Math.max(0.1, parseFloat((z - 0.1).toFixed(2)))
+                                )
+                            }
+                            title="Zoom out (Ctrl+Scroll)"
+                            style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "#374151",
+                                padding: 2,
+                                display: "flex",
+                                alignItems: "center",
+                            }}
+                        >
+                            <ZoomOut size={14} />
+                        </button>
+                        <button
+                            onClick={() => setZoom(1)}
+                            title="Reset to 100%"
+                            style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "#374151",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                minWidth: 42,
+                                textAlign: "center",
+                                padding: "2px 4px",
+                                borderRadius: 4,
+                            }}
+                        >
+                            {Math.round(zoom * 100)}%
+                        </button>
+                        <button
+                            onClick={() =>
+                                setZoom((z) =>
+                                    Math.min(3.0, parseFloat((z + 0.1).toFixed(2)))
+                                )
+                            }
+                            title="Zoom in (Ctrl+Scroll)"
+                            style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "#374151",
+                                padding: 2,
+                                display: "flex",
+                                alignItems: "center",
+                            }}
+                        >
+                            <ZoomIn size={14} />
+                        </button>
+                        <button
+                            onClick={() => setZoom(0.75)}
+                            title="Fit to screen"
+                            style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "#6366f1",
+                                fontSize: 10,
+                                fontWeight: 600,
+                                padding: "2px 4px",
+                                borderRadius: 4,
+                            }}
+                        >
+                            Fit
+                        </button>
+                    </div>
+
                     <Button
                         variant={previewMode ? "default" : "outline"}
                         size="sm"
@@ -370,20 +471,49 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                         style={{
                             flex: 1,
                             overflow: "auto",
-                            padding: "24px 0",
-                            background: "#e5e7eb",
-                            display: "flex",
-                            justifyContent: "center",
+                            background: "#d1d5db",
+                            position: "relative",
                         }}
                         onClick={handleCanvasClick}
+                        onWheel={handleWheel}
                     >
+                        {/* Scroll spacer — sized to match zoom so scrollbars work correctly */}
+                        <div
+                            style={{
+                                width: dims.width * zoom,
+                                minHeight: dims.height * zoom + 64,
+                                margin: "24px auto",
+                                position: "relative",
+                                flexShrink: 0,
+                            }}
+                        >
+                        {/* Page size label above canvas */}
+                        <div
+                            style={{
+                                position: "absolute",
+                                top: -20,
+                                left: 0,
+                                fontSize: 11,
+                                color: "#6b7280",
+                                fontWeight: 500,
+                                userSelect: "none",
+                            }}
+                        >
+                            {template.pageSize} — {dims.width} × {dims.height}px
+                        </div>
                         <div
                             style={{
                                 width: canvasWidth,
-                                background: "white",
-                                boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+                                height: dims.height,
+                                transformOrigin: "top left",
+                                transform: `scale(${zoom})`,
+                                background: template.pageBackground ?? "white",
+                                boxShadow: "0 4px 32px rgba(0,0,0,0.18)",
+
                                 borderRadius: 4,
                                 overflow: "hidden",
+                                display: "flex",
+                                flexDirection: "column",
                                 fontFamily: template.theme.fontFamily,
                                 color: template.theme.primaryColor,
                                 borderLeft: template.accentBorders?.left
@@ -415,6 +545,10 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                                         template.pagePadding?.bottom ?? 0,
                                     paddingLeft:
                                         template.pagePadding?.left ?? 0,
+                                    flex: 1,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    overflow: "hidden",
                                 }}
                             >
                                 {/* Header */}
@@ -455,128 +589,107 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                                 )}
 
                                 {/* Body — multiple grids */}
-                                <div style={{ minHeight: 200 }}>
+                                <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
                                     {template.body.grids.map((grid, idx) => (
                                         <div
                                             key={grid.id}
                                             style={{
-                                                cursor: previewMode
-                                                    ? "default"
-                                                    : "pointer",
                                                 borderTop:
                                                     !previewMode && idx > 0
                                                         ? "2px dashed #cbd5e1"
                                                         : undefined,
                                                 position: "relative",
                                             }}
-                                            onClick={(e) => {
-                                                if (!previewMode) {
-                                                    e.stopPropagation();
-                                                    setFocusedSection(grid.id);
-                                                }
-                                            }}
                                         >
-                                            {/* Per-grid controls — editor only */}
-                                            <div
-                                                style={{
-                                                    position: "absolute",
-                                                    top: 4,
-                                                    right: 4,
-                                                    display: previewMode
-                                                        ? "none"
-                                                        : "flex",
-                                                    gap: 2,
-                                                    zIndex: 20,
-                                                    opacity:
-                                                        focusedSection ===
-                                                        grid.id
-                                                            ? 1
-                                                            : 0,
-                                                    transition: "opacity 0.15s",
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    (
-                                                        e.currentTarget as HTMLElement
-                                                    ).style.opacity = "1";
-                                                }}
-                                                onClick={(e) =>
-                                                    e.stopPropagation()
-                                                }
-                                            >
-                                                <button
-                                                    title="Move grid up"
-                                                    disabled={idx === 0}
-                                                    onClick={() =>
-                                                        editor.moveBodyGrid(
-                                                            grid.id,
-                                                            "up",
-                                                        )
-                                                    }
-                                                    style={iconBtnStyle(
-                                                        idx === 0,
-                                                    )}
-                                                >
-                                                    <ChevronUp size={12} />
-                                                </button>
-                                                <button
-                                                    title="Move grid down"
-                                                    disabled={
-                                                        idx ===
-                                                        template.body.grids
-                                                            .length -
-                                                            1
-                                                    }
-                                                    onClick={() =>
-                                                        editor.moveBodyGrid(
-                                                            grid.id,
-                                                            "down",
-                                                        )
-                                                    }
-                                                    style={iconBtnStyle(
-                                                        idx ===
-                                                            template.body.grids
-                                                                .length -
-                                                                1,
-                                                    )}
-                                                >
-                                                    <ChevronDown size={12} />
-                                                </button>
-                                                <button
-                                                    title="Delete grid"
-                                                    disabled={
-                                                        template.body.grids
-                                                            .length <= 1
-                                                    }
-                                                    onClick={() => {
-                                                        editor.removeBodyGrid(
-                                                            grid.id,
-                                                        );
-                                                        // Move focus away if this grid was focused
-                                                        if (
-                                                            focusedSection ===
-                                                            grid.id
-                                                        ) {
-                                                            const next =
-                                                                template.body.grids.find(
-                                                                    (g) =>
-                                                                        g.id !==
-                                                                        grid.id,
-                                                                );
-                                                            setFocusedSection(
-                                                                next?.id ??
-                                                                    "body",
-                                                            );
-                                                        }
+                                            {/* Section label bar — editor only */}
+                                            {!previewMode && (
+                                                <div
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setFocusedSection(grid.id);
+                                                        clearSelection();
                                                     }}
-                                                    style={iconBtnStyle(
-                                                        template.body.grids
-                                                            .length <= 1,
-                                                        true,
-                                                    )}
+                                                    style={{
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        justifyContent: "space-between",
+                                                        padding: "2px 6px",
+                                                        background:
+                                                            focusedSection === grid.id
+                                                                ? "#ede9fe"
+                                                                : "#f8fafc",
+                                                        borderBottom: "1px solid #e2e8f0",
+                                                        cursor: "pointer",
+                                                        userSelect: "none",
+                                                        transition: "background 0.1s",
+                                                    }}
                                                 >
-                                                    <Trash2 size={12} />
-                                                </button>
-                                            </div>
+                                                    <span
+                                                        style={{
+                                                            fontSize: 10,
+                                                            fontWeight: 600,
+                                                            color:
+                                                                focusedSection === grid.id
+                                                                    ? "#7c3aed"
+                                                                    : "#64748b",
+                                                            letterSpacing: "0.06em",
+                                                            textTransform: "uppercase",
+                                                        }}
+                                                    >
+                                                        {`Section ${idx + 1}`}
+                                                    </span>
+                                                    <div
+                                                        style={{ display: "flex", gap: 2 }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <button
+                                                            title="Configure section"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setFocusedSection(grid.id);
+                                                                clearSelection();
+                                                            }}
+                                                            style={{
+                                                                ...iconBtnStyle(false),
+                                                                color: focusedSection === grid.id ? "#7c3aed" : "#94a3b8",
+                                                                borderColor: focusedSection === grid.id ? "#c4b5fd" : "#e2e8f0",
+                                                            }}
+                                                        >
+                                                            <Settings size={10} />
+                                                        </button>
+                                                        <button
+                                                            title="Move section up"
+                                                            disabled={idx === 0}
+                                                            onClick={() => editor.moveBodyGrid(grid.id, "up")}
+                                                            style={iconBtnStyle(idx === 0)}
+                                                        >
+                                                            <ChevronUp size={10} />
+                                                        </button>
+                                                        <button
+                                                            title="Move section down"
+                                                            disabled={idx === template.body.grids.length - 1}
+                                                            onClick={() => editor.moveBodyGrid(grid.id, "down")}
+                                                            style={iconBtnStyle(idx === template.body.grids.length - 1)}
+                                                        >
+                                                            <ChevronDown size={10} />
+                                                        </button>
+                                                        <button
+                                                            title="Delete section"
+                                                            disabled={template.body.grids.length <= 1}
+                                                            onClick={() => {
+                                                                editor.removeBodyGrid(grid.id);
+                                                                if (focusedSection === grid.id) {
+                                                                    const next = template.body.grids.find((g) => g.id !== grid.id);
+                                                                    setFocusedSection(next?.id ?? "body");
+                                                                }
+                                                            }}
+                                                            style={iconBtnStyle(template.body.grids.length <= 1, true)}
+                                                        >
+                                                            <Trash2 size={10} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             <EditorGrid
                                                 section={grid}
@@ -678,6 +791,7 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                                 />
                             )}
                         </div>
+                        </div>
                     </div>
 
                     {/* Right: Properties Panel — editor only */}
@@ -706,6 +820,7 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                             onUpdateTemplate={editor.updateTemplate}
                             onUpdateWidgetConfig={editor.updateWidgetConfig}
                             onUpdateCellFlex={editor.updateCellFlex}
+                            onUpdateCellSpan={editor.updateCellSpan}
                             onUpdateSectionDividerColor={
                                 editor.updateSectionDividerColor
                             }

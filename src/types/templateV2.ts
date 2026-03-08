@@ -145,6 +145,8 @@ export interface TemplateV2 {
     pagePadding?: PagePadding;
     /** Optional decorative accent borders on the page edges */
     accentBorders?: PageAccentBorders;
+    /** Optional background color for the entire page */
+    pageBackground?: string;
 }
 
 // ── Factory helpers ──────────────────────────────────────────────────────────
@@ -359,6 +361,21 @@ export function removeNodeFromBody(
 ): BodySectionV2 {
     return {
         grids: body.grids.map((g) => removeNodeFromSection(g, nodeId)),
+    };
+}
+
+/** Remove cells that have no children from a section (after a delete) */
+export function pruneEmptyCells(section: SectionGridV2): SectionGridV2 {
+    return { ...section, cells: section.cells.filter((c) => c.children.length > 0) };
+}
+
+/** Prune empty cells from every section in the template */
+export function pruneEmptyCellsInTemplate(t: TemplateV2): TemplateV2 {
+    return {
+        ...t,
+        header: pruneEmptyCells(t.header),
+        footer: pruneEmptyCells(t.footer),
+        body: { grids: t.body.grids.map((g) => pruneEmptyCells(g)) },
     };
 }
 

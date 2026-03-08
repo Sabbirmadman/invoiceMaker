@@ -29,6 +29,7 @@ import {
     removeNodeFromSection,
     removeNodeFromBody,
     makeBodyGrid,
+    pruneEmptyCellsInTemplate,
 } from "@/types/templateV2";
 import type { ElementType } from "@/types/template";
 import type { BodyPlacement } from "@/types/templateV2";
@@ -95,12 +96,14 @@ export interface UseTemplateEditorReturn {
         patch: Partial<
             Pick<
                 TemplateV2,
-                "pageSize" | "orientation" | "pagePadding" | "accentBorders"
+                "pageSize" | "orientation" | "pagePadding" | "accentBorders" | "pageBackground"
             >
         >,
     ) => void;
     // Cell flex
     updateCellFlex: (cellId: string, flex: CellFlex | undefined) => void;
+    // Cell span
+    updateCellSpan: (cellId: string, colSpan: number, rowSpan: number) => void;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -517,7 +520,9 @@ export function useTemplateEditor(
 
     const deleteNode = useCallback(
         (nodeId: string) => {
-            push(removeNodeFromAll(template, nodeId));
+            // Also prune cells that become empty after the delete so the
+            // empty-cell placeholder re-appears and can receive new drops.
+            push(pruneEmptyCellsInTemplate(removeNodeFromAll(template, nodeId)));
         },
         [template, push],
     );
@@ -585,7 +590,7 @@ export function useTemplateEditor(
             patch: Partial<
                 Pick<
                     TemplateV2,
-                    "pageSize" | "orientation" | "pagePadding" | "accentBorders"
+                    "pageSize" | "orientation" | "pagePadding" | "accentBorders" | "pageBackground"
                 >
             >,
         ) => {
@@ -604,6 +609,35 @@ export function useTemplateEditor(
                     ...s,
                     cells: s.cells.map((c) =>
                         c.id === cellId ? { ...c, flex } : c,
+                    ),
+                };
+            }
+            push({
+                ...template,
+                header: patchSection(template.header),
+                footer: patchSection(template.footer),
+                body: { grids: template.body.grids.map(patchSection) },
+            });
+        },
+        [template, push],
+    );
+
+    // ── Cell span ─────────────────────────────────────────────────────
+
+    const updateCellSpan = useCallback(
+        (cellId: string, colSpan: number, rowSpan: number) => {
+            function patchSection(s: SectionGridV2): SectionGridV2 {
+                if (!s.cells.some((c) => c.id === cellId)) return s;
+                return {
+                    ...s,
+                    cells: s.cells.map((c) =>
+                        c.id === cellId
+                            ? {
+                                  ...c,
+                                  colSpan: Math.max(1, colSpan),
+                                  rowSpan: Math.max(1, rowSpan),
+                              }
+                            : c,
                     ),
                 };
             }
@@ -646,6 +680,7 @@ export function useTemplateEditor(
         updateSectionDividerColor,
         updateTemplate,
         updateCellFlex,
+        updateCellSpan,
         setSectionVisible,
     };
 }

@@ -11,8 +11,8 @@
  *          textLabel â†’ rich text formatting + content editor
  *          others    â†’ placement + delete
  */
-// @ts-nocheck â€” large generated file, skip strict checks
-import React, { useState, useEffect } from "react";
+// PropertiesPanel — large generated file
+import React, { useState } from "react";
 import { Trash2 } from "lucide-react";
 import type { SelectionNodeType } from "./EditorSelectionContext";
 import type {
@@ -33,10 +33,31 @@ import type { PageSize } from "@/types/common";
 
 // â”€â”€ Shared sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function PanelSection({ title, children }: { title: string; children: React.ReactNode }) {
+function PanelSection({
+    title,
+    children,
+}: {
+    title: string;
+    children: React.ReactNode;
+}) {
     return (
-        <div style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: 12, marginBottom: 12 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
+        <div
+            style={{
+                borderBottom: "1px solid #f1f5f9",
+                paddingBottom: 12,
+                marginBottom: 12,
+            }}
+        >
+            <div
+                style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: "#64748b",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    marginBottom: 8,
+                }}
+            >
                 {title}
             </div>
             {children}
@@ -44,18 +65,50 @@ function PanelSection({ title, children }: { title: string; children: React.Reac
     );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+    label,
+    children,
+}: {
+    label: string;
+    children: React.ReactNode;
+}) {
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <label style={{ fontSize: 11, color: "#6b7280", minWidth: 76, flexShrink: 0 }}>{label}</label>
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 6,
+            }}
+        >
+            <label
+                style={{
+                    fontSize: 11,
+                    color: "#6b7280",
+                    minWidth: 76,
+                    flexShrink: 0,
+                }}
+            >
+                {label}
+            </label>
             <div style={{ flex: 1 }}>{children}</div>
         </div>
     );
 }
 
 function NumberInput({
-    value, onChange, min = 0, max = 1000, step = 1,
-}: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number }) {
+    value,
+    onChange,
+    min = 0,
+    max = 1000,
+    step = 1,
+}: {
+    value: number;
+    onChange: (v: number) => void;
+    min?: number;
+    max?: number;
+    step?: number;
+}) {
     return (
         <input
             type="number"
@@ -64,42 +117,84 @@ function NumberInput({
             max={max}
             step={step}
             onChange={(e) => onChange(Number(e.target.value))}
-            style={{ width: "100%", padding: "3px 6px", border: "1px solid #d1d5db", borderRadius: 4, fontSize: 12 }}
+            style={{
+                width: "100%",
+                padding: "3px 6px",
+                border: "1px solid #d1d5db",
+                borderRadius: 4,
+                fontSize: 12,
+            }}
         />
     );
 }
 
 function TextInput({
-    value, onChange, placeholder,
-}: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+    value,
+    onChange,
+    placeholder,
+}: {
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+}) {
     return (
         <input
             type="text"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            style={{ width: "100%", padding: "3px 6px", border: "1px solid #d1d5db", borderRadius: 4, fontSize: 12, boxSizing: "border-box" }}
+            style={{
+                width: "100%",
+                padding: "3px 6px",
+                border: "1px solid #d1d5db",
+                borderRadius: 4,
+                fontSize: 12,
+                boxSizing: "border-box",
+            }}
         />
     );
 }
 
 function SelectInput({
-    value, onChange, options,
-}: { value: string; onChange: (v: string) => void; options: Array<{ label: string; value: string }> }) {
+    value,
+    onChange,
+    options,
+}: {
+    value: string;
+    onChange: (v: string) => void;
+    options: Array<{ label: string; value: string }>;
+}) {
     return (
         <select
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            style={{ width: "100%", padding: "3px 6px", border: "1px solid #d1d5db", borderRadius: 4, fontSize: 12, background: "white" }}
+            style={{
+                width: "100%",
+                padding: "3px 6px",
+                border: "1px solid #d1d5db",
+                borderRadius: 4,
+                fontSize: 12,
+                background: "white",
+            }}
         >
-            {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
         </select>
     );
 }
 
 function ColorInput({
-    value, onChange, label,
-}: { value: string; onChange: (v: string) => void; label: string }) {
+    value,
+    onChange,
+    label,
+}: {
+    value: string;
+    onChange: (v: string) => void;
+    label: string;
+}) {
     return (
         <Row label={label}>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -107,9 +202,20 @@ function ColorInput({
                     type="color"
                     value={value || "#ffffff"}
                     onChange={(e) => onChange(e.target.value)}
-                    style={{ width: 28, height: 28, border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", padding: 2 }}
+                    style={{
+                        width: 28,
+                        height: 28,
+                        border: "1px solid #d1d5db",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        padding: 2,
+                    }}
                 />
-                <TextInput value={value} onChange={onChange} placeholder="#ffffff" />
+                <TextInput
+                    value={value}
+                    onChange={onChange}
+                    placeholder="#ffffff"
+                />
             </div>
         </Row>
     );
@@ -118,18 +224,40 @@ function ColorInput({
 // â”€â”€ Four-side padding input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function FourSideInput({
-    values, onChange, title,
+    values,
+    onChange,
+    title,
 }: {
     values: { top: number; right: number; bottom: number; left: number };
-    onChange: (v: { top: number; right: number; bottom: number; left: number }) => void;
+    onChange: (v: {
+        top: number;
+        right: number;
+        bottom: number;
+        left: number;
+    }) => void;
     title: string;
 }) {
     return (
         <PanelSection title={title}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 6,
+                }}
+            >
                 {(["top", "right", "bottom", "left"] as const).map((side) => (
                     <div key={side}>
-                        <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 2, textTransform: "capitalize" }}>{side}</div>
+                        <div
+                            style={{
+                                fontSize: 10,
+                                color: "#94a3b8",
+                                marginBottom: 2,
+                                textTransform: "capitalize",
+                            }}
+                        >
+                            {side}
+                        </div>
                         <NumberInput
                             value={values[side]}
                             onChange={(v) => onChange({ ...values, [side]: v })}
@@ -147,16 +275,40 @@ function FourSideInput({
 
 interface PagePanelProps {
     template: TemplateV2;
-    onUpdateTemplate: (patch: Partial<Pick<TemplateV2, "pageSize" | "orientation" | "pagePadding" | "accentBorders">>) => void;
+    onUpdateTemplate: (
+        patch: Partial<
+            Pick<
+                TemplateV2,
+                "pageSize" | "orientation" | "pagePadding" | "accentBorders" | "pageBackground"
+            >
+        >,
+    ) => void;
 }
 
 function PageSettingsPanel({ template, onUpdateTemplate }: PagePanelProps) {
-    const pagePadding: PagePadding = template.pagePadding ?? { top: 0, right: 0, bottom: 0, left: 0 };
+    const pagePadding: PagePadding = template.pagePadding ?? {
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+    };
     const accentBorders: PageAccentBorders = template.accentBorders ?? {};
 
-    function updateBorder(side: "top" | "right" | "bottom" | "left", patch: Partial<AccentBorder>) {
-        const current = accentBorders[side] ?? { color: "#b45309", width: 6, enabled: false };
-        onUpdateTemplate({ accentBorders: { ...accentBorders, [side]: { ...current, ...patch } } });
+    function updateBorder(
+        side: "top" | "right" | "bottom" | "left",
+        patch: Partial<AccentBorder>,
+    ) {
+        const current = accentBorders[side] ?? {
+            color: "#b45309",
+            width: 6,
+            enabled: false,
+        };
+        onUpdateTemplate({
+            accentBorders: {
+                ...accentBorders,
+                [side]: { ...current, ...patch },
+            },
+        });
     }
 
     return (
@@ -165,7 +317,9 @@ function PageSettingsPanel({ template, onUpdateTemplate }: PagePanelProps) {
                 <Row label="Size">
                     <SelectInput
                         value={template.pageSize}
-                        onChange={(v) => onUpdateTemplate({ pageSize: v as PageSize })}
+                        onChange={(v) =>
+                            onUpdateTemplate({ pageSize: v as PageSize })
+                        }
                         options={[
                             { label: "A4 (210Ã—297mm)", value: "A4" },
                             { label: "A5 (148Ã—210mm)", value: "A5" },
@@ -176,7 +330,11 @@ function PageSettingsPanel({ template, onUpdateTemplate }: PagePanelProps) {
                 <Row label="Orientation">
                     <SelectInput
                         value={template.orientation}
-                        onChange={(v) => onUpdateTemplate({ orientation: v as "portrait" | "landscape" })}
+                        onChange={(v) =>
+                            onUpdateTemplate({
+                                orientation: v as "portrait" | "landscape",
+                            })
+                        }
                         options={[
                             { label: "Portrait", value: "portrait" },
                             { label: "Landscape", value: "landscape" },
@@ -191,8 +349,23 @@ function PageSettingsPanel({ template, onUpdateTemplate }: PagePanelProps) {
                 onChange={(v) => onUpdateTemplate({ pagePadding: v })}
             />
 
+            <PanelSection title="Page Background">
+                <ColorInput
+                    label="Color"
+                    value={template.pageBackground ?? "#ffffff"}
+                    onChange={(v) => onUpdateTemplate({ pageBackground: v })}
+                />
+            </PanelSection>
+
             <PanelSection title="Accent Borders">
-                <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, lineHeight: 1.4 }}>
+                <div
+                    style={{
+                        fontSize: 11,
+                        color: "#94a3b8",
+                        marginBottom: 8,
+                        lineHeight: 1.4,
+                    }}
+                >
                     Decorative colored borders on the page edges.
                 </div>
                 {(["top", "right", "bottom", "left"] as const).map((side) => {
@@ -200,19 +373,45 @@ function PageSettingsPanel({ template, onUpdateTemplate }: PagePanelProps) {
                     const enabled = border?.enabled ?? false;
                     return (
                         <div key={side} style={{ marginBottom: 10 }}>
-                            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 4 }}>
+                            <label
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    cursor: "pointer",
+                                    marginBottom: 4,
+                                }}
+                            >
                                 <input
                                     type="checkbox"
                                     checked={enabled}
-                                    onChange={(e) => updateBorder(side, { enabled: e.target.checked })}
+                                    onChange={(e) =>
+                                        updateBorder(side, {
+                                            enabled: e.target.checked,
+                                        })
+                                    }
                                 />
-                                <span style={{ fontSize: 12, fontWeight: 600, color: "#374151", textTransform: "capitalize" }}>
+                                <span
+                                    style={{
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        color: "#374151",
+                                        textTransform: "capitalize",
+                                    }}
+                                >
                                     {side}
                                     {enabled && border?.color && (
-                                        <span style={{
-                                            display: "inline-block", width: 10, height: 10, borderRadius: 2,
-                                            background: border.color, marginLeft: 6, verticalAlign: "middle",
-                                        }} />
+                                        <span
+                                            style={{
+                                                display: "inline-block",
+                                                width: 10,
+                                                height: 10,
+                                                borderRadius: 2,
+                                                background: border.color,
+                                                marginLeft: 6,
+                                                verticalAlign: "middle",
+                                            }}
+                                        />
                                     )}
                                 </span>
                             </label>
@@ -221,12 +420,16 @@ function PageSettingsPanel({ template, onUpdateTemplate }: PagePanelProps) {
                                     <ColorInput
                                         label="Color"
                                         value={border?.color ?? "#b45309"}
-                                        onChange={(v) => updateBorder(side, { color: v })}
+                                        onChange={(v) =>
+                                            updateBorder(side, { color: v })
+                                        }
                                     />
                                     <Row label="Width (px)">
                                         <NumberInput
                                             value={border?.width ?? 6}
-                                            onChange={(v) => updateBorder(side, { width: v })}
+                                            onChange={(v) =>
+                                                updateBorder(side, { width: v })
+                                            }
                                             min={1}
                                             max={40}
                                         />
@@ -253,7 +456,12 @@ interface GridConfigPanelProps {
 }
 
 function GridConfigPanel({
-    section, isHeaderOrFooter, onUpdate, onUpdateHeight, onUpdateBg, onUpdateDividerColor,
+    section,
+    isHeaderOrFooter,
+    onUpdate,
+    onUpdateHeight,
+    onUpdateBg,
+    onUpdateDividerColor,
 }: GridConfigPanelProps) {
     const { grid, background } = section;
 
@@ -262,26 +470,56 @@ function GridConfigPanel({
             {section.height !== undefined && (
                 <PanelSection title="Size">
                     <Row label="Height (px)">
-                        <NumberInput value={section.height} onChange={(v) => onUpdateHeight?.(v)} min={40} max={500} />
+                        <NumberInput
+                            value={section.height}
+                            onChange={(v) => onUpdateHeight?.(v)}
+                            min={40}
+                            max={500}
+                        />
                     </Row>
                 </PanelSection>
             )}
 
             <PanelSection title="Grid">
                 <Row label="Columns">
-                    <NumberInput value={grid.columns} onChange={(v) => onUpdate({ columns: v })} min={1} max={12} />
+                    <NumberInput
+                        value={grid.columns}
+                        onChange={(v) => onUpdate({ columns: v })}
+                        min={1}
+                        max={12}
+                    />
                 </Row>
                 <Row label="Rows">
-                    <NumberInput value={grid.rows} onChange={(v) => onUpdate({ rows: v })} min={1} max={20} />
+                    <NumberInput
+                        value={grid.rows}
+                        onChange={(v) => onUpdate({ rows: v })}
+                        min={1}
+                        max={20}
+                    />
                 </Row>
                 <Row label="Col gap (px)">
-                    <NumberInput value={grid.colGap} onChange={(v) => onUpdate({ colGap: v })} min={0} max={64} />
+                    <NumberInput
+                        value={grid.colGap}
+                        onChange={(v) => onUpdate({ colGap: v })}
+                        min={0}
+                        max={64}
+                    />
                 </Row>
                 <Row label="Row gap (px)">
-                    <NumberInput value={grid.rowGap} onChange={(v) => onUpdate({ rowGap: v })} min={0} max={64} />
+                    <NumberInput
+                        value={grid.rowGap}
+                        onChange={(v) => onUpdate({ rowGap: v })}
+                        min={0}
+                        max={64}
+                    />
                 </Row>
                 <Row label="Padding (px)">
-                    <NumberInput value={grid.padding} onChange={(v) => onUpdate({ padding: v })} min={0} max={64} />
+                    <NumberInput
+                        value={grid.padding}
+                        onChange={(v) => onUpdate({ padding: v })}
+                        min={0}
+                        max={64}
+                    />
                 </Row>
             </PanelSection>
 
@@ -319,7 +557,14 @@ function GridConfigPanel({
 
             {isHeaderOrFooter && onUpdateDividerColor && (
                 <PanelSection title="Divider Line">
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, lineHeight: 1.4 }}>
+                    <div
+                        style={{
+                            fontSize: 11,
+                            color: "#94a3b8",
+                            marginBottom: 8,
+                            lineHeight: 1.4,
+                        }}
+                    >
                         Border between header/body or body/footer.
                     </div>
                     <ColorInput
@@ -335,12 +580,16 @@ function GridConfigPanel({
                     <ColorInput
                         label="Color"
                         value={background?.color ?? ""}
-                        onChange={(v) => onUpdateBg({ ...background, color: v })}
+                        onChange={(v) =>
+                            onUpdateBg({ ...background, color: v })
+                        }
                     />
                     <Row label="Image URL">
                         <TextInput
                             value={background?.imageUrl ?? ""}
-                            onChange={(v) => onUpdateBg({ ...background, imageUrl: v })}
+                            onChange={(v) =>
+                                onUpdateBg({ ...background, imageUrl: v })
+                            }
                             placeholder="https://..."
                         />
                     </Row>
@@ -353,19 +602,38 @@ function GridConfigPanel({
 // â”€â”€ Cell Flex Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CellFlexPanel({
-    cell, onChange,
-}: { cell: TemplateGridCell; onChange: (f: CellFlex) => void }) {
+    cell,
+    onChange,
+    onSpanChange,
+    section,
+}: {
+    cell: TemplateGridCell;
+    onChange: (f: CellFlex) => void;
+    onSpanChange?: (colSpan: number, rowSpan: number) => void;
+    section?: SectionGridV2;
+}) {
     const flex = cell.flex ?? {};
+    const maxCols = section ? section.grid.columns : 12;
+    const maxRows = section ? section.grid.rows : 20;
 
     return (
         <PanelSection title="Cell Layout (Flex)">
-            <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, lineHeight: 1.4 }}>
+            <div
+                style={{
+                    fontSize: 11,
+                    color: "#94a3b8",
+                    marginBottom: 8,
+                    lineHeight: 1.4,
+                }}
+            >
                 Controls how elements inside this cell are arranged.
             </div>
             <Row label="Direction">
                 <SelectInput
                     value={flex.direction ?? "column"}
-                    onChange={(v) => onChange({ ...flex, direction: v as "row" | "column" })}
+                    onChange={(v) =>
+                        onChange({ ...flex, direction: v as "row" | "column" })
+                    }
                     options={[
                         { label: "Column (vertical)", value: "column" },
                         { label: "Row (horizontal)", value: "row" },
@@ -398,8 +666,56 @@ function CellFlexPanel({
                 />
             </Row>
             <Row label="Gap (px)">
-                <NumberInput value={flex.gap ?? 4} onChange={(v) => onChange({ ...flex, gap: v })} min={0} max={64} />
+                <NumberInput
+                    value={flex.gap ?? 4}
+                    onChange={(v) => onChange({ ...flex, gap: v })}
+                    min={0}
+                    max={64}
+                />
             </Row>
+            {onSpanChange && (
+                <>
+                    <div
+                        style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: "#64748b",
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            marginTop: 10,
+                            marginBottom: 6,
+                        }}
+                    >
+                        Cell Merge (Span)
+                    </div>
+                    <div
+                        style={{
+                            fontSize: 11,
+                            color: "#94a3b8",
+                            marginBottom: 8,
+                            lineHeight: 1.4,
+                        }}
+                    >
+                        Expand this cell to span multiple columns or rows.
+                    </div>
+                    <Row label="Col Span">
+                        <NumberInput
+                            value={cell.colSpan}
+                            onChange={(v) => onSpanChange(v, cell.rowSpan)}
+                            min={1}
+                            max={maxCols - cell.colStart + 1}
+                        />
+                    </Row>
+                    <Row label="Row Span">
+                        <NumberInput
+                            value={cell.rowSpan}
+                            onChange={(v) => onSpanChange(cell.colSpan, v)}
+                            min={1}
+                            max={maxRows - cell.rowStart + 1}
+                        />
+                    </Row>
+                </>
+            )}
         </PanelSection>
     );
 }
@@ -407,10 +723,13 @@ function CellFlexPanel({
 // â”€â”€ Logo Widget Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function LogoWidgetPanel({
-    widget, onUpdateConfig,
+    widget,
+    onUpdateConfig,
 }: {
     widget: TemplateWidget;
-    onUpdateConfig: (patch: Partial<Pick<TemplateWidget, "config" | "styles">>) => void;
+    onUpdateConfig: (
+        patch: Partial<Pick<TemplateWidget, "config" | "styles">>,
+    ) => void;
 }) {
     const styles = (widget.styles ?? {}) as Record<string, string>;
 
@@ -425,10 +744,18 @@ function LogoWidgetPanel({
         <>
             <PanelSection title="Image Size">
                 <Row label="Width">
-                    <TextInput value={styles.width ?? "auto"} onChange={(v) => setStyle("width", v)} placeholder="auto / 80px / 100%" />
+                    <TextInput
+                        value={styles.width ?? "auto"}
+                        onChange={(v) => setStyle("width", v)}
+                        placeholder="auto / 80px / 100%"
+                    />
                 </Row>
                 <Row label="Max Height">
-                    <TextInput value={styles.maxHeight ?? "80px"} onChange={(v) => setStyle("maxHeight", v)} placeholder="80px" />
+                    <TextInput
+                        value={styles.maxHeight ?? "80px"}
+                        onChange={(v) => setStyle("maxHeight", v)}
+                        placeholder="80px"
+                    />
                 </Row>
                 <Row label="Object Fit">
                     <SelectInput
@@ -488,8 +815,16 @@ function LogoWidgetPanel({
 // â”€â”€ TextLabel Rich Editor Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ToggleBtn({
-    active, onClick, title, children,
-}: { active: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
+    active,
+    onClick,
+    title,
+    children,
+}: {
+    active: boolean;
+    onClick: () => void;
+    title: string;
+    children: React.ReactNode;
+}) {
     return (
         <button
             onClick={onClick}
@@ -512,10 +847,13 @@ function ToggleBtn({
 }
 
 function TextLabelPanel({
-    widget, onUpdateConfig,
+    widget,
+    onUpdateConfig,
 }: {
     widget: TemplateWidget;
-    onUpdateConfig: (patch: Partial<Pick<TemplateWidget, "config" | "styles">>) => void;
+    onUpdateConfig: (
+        patch: Partial<Pick<TemplateWidget, "config" | "styles">>,
+    ) => void;
 }) {
     const styles = (widget.styles ?? {}) as Record<string, string>;
     const config = widget.config ?? {};
@@ -535,7 +873,11 @@ function TextLabelPanel({
             <PanelSection title="Text Content">
                 <textarea
                     value={text}
-                    onChange={(e) => onUpdateConfig({ config: { ...config, text: e.target.value } })}
+                    onChange={(e) =>
+                        onUpdateConfig({
+                            config: { ...config, text: e.target.value },
+                        })
+                    }
                     rows={5}
                     style={{
                         width: "100%",
@@ -553,51 +895,293 @@ function TextLabelPanel({
             </PanelSection>
 
             <PanelSection title="Format">
-                <div style={{ display: "flex", gap: 3, marginBottom: 10, flexWrap: "wrap" as const }}>
-                    <ToggleBtn active={isBold} onClick={() => setStyle("fontWeight", isBold ? "normal" : "bold")} title="Bold">
+                <div
+                    style={{
+                        display: "flex",
+                        gap: 3,
+                        marginBottom: 10,
+                        flexWrap: "wrap" as const,
+                    }}
+                >
+                    <ToggleBtn
+                        active={isBold}
+                        onClick={() =>
+                            setStyle("fontWeight", isBold ? "normal" : "bold")
+                        }
+                        title="Bold"
+                    >
                         <strong>B</strong>
                     </ToggleBtn>
-                    <ToggleBtn active={isItalic} onClick={() => setStyle("fontStyle", isItalic ? "normal" : "italic")} title="Italic">
+                    <ToggleBtn
+                        active={isItalic}
+                        onClick={() =>
+                            setStyle(
+                                "fontStyle",
+                                isItalic ? "normal" : "italic",
+                            )
+                        }
+                        title="Italic"
+                    >
                         <em>I</em>
                     </ToggleBtn>
                     <ToggleBtn
                         active={isUnderline}
-                        onClick={() => setStyle("textDecoration", isUnderline ? "none" : "underline")}
+                        onClick={() =>
+                            setStyle(
+                                "textDecoration",
+                                isUnderline ? "none" : "underline",
+                            )
+                        }
                         title="Underline"
                     >
                         <span style={{ textDecoration: "underline" }}>U</span>
                     </ToggleBtn>
-                    <div style={{ width: 1, background: "#e5e7eb", margin: "0 2px" }} />
+                    <div
+                        style={{
+                            width: 1,
+                            background: "#e5e7eb",
+                            margin: "0 2px",
+                        }}
+                    />
                     {(["left", "center", "right"] as const).map((a) => (
-                        <ToggleBtn key={a} active={align === a} onClick={() => setStyle("textAlign", a)} title={`Align ${a}`}>
-                            {a === "left" ? "â‰¡ L" : a === "center" ? "â‰¡ C" : "â‰¡ R"}
+                        <ToggleBtn
+                            key={a}
+                            active={align === a}
+                            onClick={() => setStyle("textAlign", a)}
+                            title={`Align ${a}`}
+                        >
+                            {a === "left"
+                                ? "â‰¡ L"
+                                : a === "center"
+                                  ? "â‰¡ C"
+                                  : "â‰¡ R"}
                         </ToggleBtn>
                     ))}
                 </div>
 
                 <Row label="Font Size">
-                    <TextInput value={styles.fontSize ?? "14px"} onChange={(v) => setStyle("fontSize", v)} placeholder="14px" />
+                    <TextInput
+                        value={styles.fontSize ?? "14px"}
+                        onChange={(v) => setStyle("fontSize", v)}
+                        placeholder="14px"
+                    />
                 </Row>
                 <Row label="Font Family">
-                    <TextInput value={styles.fontFamily ?? ""} onChange={(v) => setStyle("fontFamily", v)} placeholder="inherit" />
+                    <TextInput
+                        value={styles.fontFamily ?? ""}
+                        onChange={(v) => setStyle("fontFamily", v)}
+                        placeholder="inherit"
+                    />
                 </Row>
                 <Row label="Line Height">
-                    <TextInput value={styles.lineHeight ?? "1.5"} onChange={(v) => setStyle("lineHeight", v)} placeholder="1.5" />
+                    <TextInput
+                        value={styles.lineHeight ?? "1.5"}
+                        onChange={(v) => setStyle("lineHeight", v)}
+                        placeholder="1.5"
+                    />
                 </Row>
                 <Row label="Letter Spacing">
-                    <TextInput value={styles.letterSpacing ?? "0"} onChange={(v) => setStyle("letterSpacing", v)} placeholder="0px" />
+                    <TextInput
+                        value={styles.letterSpacing ?? "0"}
+                        onChange={(v) => setStyle("letterSpacing", v)}
+                        placeholder="0px"
+                    />
                 </Row>
             </PanelSection>
 
             <PanelSection title="Colors">
-                <ColorInput label="Text Color" value={styles.color ?? "#111827"} onChange={(v) => setStyle("color", v)} />
-                <ColorInput label="Background" value={styles.backgroundColor ?? ""} onChange={(v) => setStyle("backgroundColor", v)} />
+                <ColorInput
+                    label="Text Color"
+                    value={styles.color ?? "#111827"}
+                    onChange={(v) => setStyle("color", v)}
+                />
+                <ColorInput
+                    label="Background"
+                    value={styles.backgroundColor ?? ""}
+                    onChange={(v) => setStyle("backgroundColor", v)}
+                />
             </PanelSection>
 
             <PanelSection title="Spacing">
                 <Row label="Padding">
-                    <TextInput value={styles.padding ?? "0"} onChange={(v) => setStyle("padding", v)} placeholder="8px or 4px 8px" />
+                    <TextInput
+                        value={styles.padding ?? "0"}
+                        onChange={(v) => setStyle("padding", v)}
+                        placeholder="8px or 4px 8px"
+                    />
                 </Row>
+            </PanelSection>
+        </>
+    );
+}
+
+
+// -- Widget Fields & Layout Panel ---------------------------------------------
+
+const WIDGET_FIELDS: Partial<Record<string, Array<{ key: string; label: string }>>> = {
+    companyDetails: [
+        { key: "name", label: "Name" },
+        { key: "address", label: "Address" },
+        { key: "cityStateZip", label: "City / State / ZIP" },
+        { key: "country", label: "Country" },
+        { key: "phone", label: "Phone" },
+        { key: "email", label: "Email" },
+        { key: "website", label: "Website" },
+        { key: "taxId", label: "Tax ID" },
+    ],
+    billTo: [
+        { key: "label", label: '"Bill To" heading' },
+        { key: "name", label: "Name" },
+        { key: "company", label: "Company" },
+        { key: "address", label: "Address" },
+        { key: "cityStateZip", label: "City / State / ZIP" },
+        { key: "country", label: "Country" },
+        { key: "phone", label: "Phone" },
+        { key: "email", label: "Email" },
+    ],
+    shipTo: [
+        { key: "label", label: '"Ship To" heading' },
+        { key: "address", label: "Address" },
+    ],
+    invoiceDetails: [
+        { key: "title", label: "\"INVOICE\" title" },
+        { key: "number", label: "Invoice #" },
+        { key: "date", label: "Date" },
+        { key: "dueDate", label: "Due Date" },
+        { key: "terms", label: "Terms" },
+        { key: "poNumber", label: "PO Number" },
+        { key: "projectName", label: "Project" },
+        { key: "reference", label: "Reference" },
+        { key: "placeOfSupply", label: "Place of Supply" },
+    ],
+    estimateDetails: [
+        { key: "title", label: "\"ESTIMATE\" title" },
+        { key: "number", label: "Estimate #" },
+        { key: "date", label: "Date" },
+        { key: "expiryDate", label: "Expiry Date" },
+        { key: "reference", label: "Reference" },
+        { key: "poNumber", label: "PO Number" },
+        { key: "projectName", label: "Project" },
+    ],
+    receiptDetails: [
+        { key: "title", label: "\"RECEIPT\" title" },
+        { key: "number", label: "Receipt #" },
+        { key: "issueDate", label: "Issue Date" },
+        { key: "paymentDate", label: "Payment Date" },
+        { key: "paymentMethod", label: "Payment Method" },
+        { key: "transactionId", label: "Transaction ID" },
+        { key: "relatedInvoiceNumber", label: "Related Invoice #" },
+    ],
+};
+
+function FieldsConfigPanel({
+    widget,
+    onUpdateConfig,
+}: {
+    widget: TemplateWidget;
+    onUpdateConfig: (patch: Partial<Pick<TemplateWidget, "config">>) => void;
+}) {
+    const fieldDefs = WIDGET_FIELDS[widget.type];
+    if (!fieldDefs) return null;
+
+    const config = widget.config ?? {};
+    const allKeys = fieldDefs.map((fd) => fd.key);
+    const enabledFields: string[] =
+        (config.fields as string[] | undefined) ?? allKeys;
+    const layout = (config.layout as string | undefined) ?? "vertical";
+
+    function toggleField(key: string) {
+        const next = enabledFields.includes(key)
+            ? enabledFields.filter((k) => k !== key)
+            : [...enabledFields, key];
+        const ordered = allKeys.filter((k) => next.includes(k));
+        onUpdateConfig({ config: { ...config, fields: ordered } });
+    }
+
+    const justify = (config.justify as string | undefined) ?? "stretch";
+
+    function setLayout(v: string) {
+        onUpdateConfig({ config: { ...config, layout: v } });
+    }
+
+    function setJustify(v: string) {
+        onUpdateConfig({ config: { ...config, justify: v } });
+    }
+
+    return (
+        <>
+            <PanelSection title="Layout Direction">
+                <div style={{ display: "flex", gap: 6 }}>
+                    {(["vertical", "horizontal"] as const).map((v) => (
+                        <button
+                            key={v}
+                            onClick={() => setLayout(v)}
+                            style={{
+                                flex: 1,
+                                padding: "5px 4px",
+                                fontSize: 11,
+                                fontWeight: layout === v ? 700 : 500,
+                                color: layout === v ? "#4f46e5" : "#64748b",
+                                background: layout === v ? "#ede9fe" : "white",
+                                border: `1px solid ${layout === v ? "#c7d2fe" : "#d1d5db"}`,
+                                borderRadius: 5,
+                                cursor: "pointer",
+                            }}
+                        >
+                            {v === "vertical" ? "\u2195 Vertical" : "\u2194 Horizontal"}
+                        </button>
+                    ))}
+                </div>
+                {layout === "horizontal" && (
+                    <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4, fontWeight: 500 }}>Field Spacing</div>
+                        <select
+                            value={justify}
+                            onChange={(e) => setJustify(e.target.value)}
+                            style={{
+                                width: "100%",
+                                fontSize: 11,
+                                padding: "4px 6px",
+                                border: "1px solid #d1d5db",
+                                borderRadius: 5,
+                                background: "white",
+                                color: "#374151",
+                                cursor: "pointer",
+                            }}
+                        >
+                            <option value="stretch">Stretch (fill width)</option>
+                            <option value="space-between">Space Between</option>
+                            <option value="space-around">Space Around</option>
+                            <option value="start">Pack Start</option>
+                            <option value="center">Pack Center</option>
+                            <option value="end">Pack End</option>
+                        </select>
+                    </div>
+                )}
+            </PanelSection>
+
+            <PanelSection title="Visible Fields">
+                {fieldDefs.map(({ key, label }) => (
+                    <label
+                        key={key}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 7,
+                            marginBottom: 5,
+                            cursor: "pointer",
+                            fontSize: 12,
+                            color: "#374151",
+                        }}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={enabledFields.includes(key)}
+                            onChange={() => toggleField(key)}
+                        />
+                        {label}
+                    </label>
+                ))}
             </PanelSection>
         </>
     );
@@ -614,7 +1198,10 @@ function WidgetConfigPanel({
     onUpdatePlacement: (p: import("@/types/templateV2").BodyPlacement) => void;
     onDelete: () => void;
 }) {
-    const placements: Array<{ value: import("@/types/templateV2").BodyPlacement; label: string }> = [
+    const placements: Array<{
+        value: import("@/types/templateV2").BodyPlacement;
+        label: string;
+    }> = [
         { value: "first-page", label: "First page only" },
         { value: "all-pages", label: "Every page" },
         { value: "last-page", label: "Last page only" },
@@ -623,10 +1210,20 @@ function WidgetConfigPanel({
     return (
         <>
             <PanelSection title="Widget">
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4, textTransform: "capitalize" }}>
+                <div
+                    style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "#374151",
+                        marginBottom: 4,
+                        textTransform: "capitalize",
+                    }}
+                >
                     {widget.type.replace(/([A-Z])/g, " $1")}
                 </div>
-                <div style={{ fontSize: 11, color: "#9ca3af" }}>ID: {widget.id}</div>
+                <div style={{ fontSize: 11, color: "#9ca3af" }}>
+                    ID: {widget.id}
+                </div>
             </PanelSection>
 
             {widget.placement !== undefined && (
@@ -634,7 +1231,14 @@ function WidgetConfigPanel({
                     {placements.map((p) => (
                         <label
                             key={p.value}
-                            style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, cursor: "pointer", fontSize: 12 }}
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                marginBottom: 4,
+                                cursor: "pointer",
+                                fontSize: 12,
+                            }}
                         >
                             <input
                                 type="radio"
@@ -676,13 +1280,18 @@ function resolveFocusedSection(
     template: TemplateV2,
     focusedSectionId: string,
 ): { section: SectionGridV2 | null; target: SectionTarget } {
-    if (focusedSectionId === "header") return { section: template.header, target: "header" };
-    if (focusedSectionId === "footer") return { section: template.footer, target: "footer" };
+    if (focusedSectionId === "header")
+        return { section: template.header, target: "header" };
+    if (focusedSectionId === "footer")
+        return { section: template.footer, target: "footer" };
     const grid = template.body.grids.find((g) => g.id === focusedSectionId);
     return { section: grid ?? null, target: { bodyGridId: focusedSectionId } };
 }
 
-function findCellById(template: TemplateV2, cellId: string): TemplateGridCell | null {
+function findCellById(
+    template: TemplateV2,
+    cellId: string,
+): TemplateGridCell | null {
     const hc = template.header.cells.find((c) => c.id === cellId);
     if (hc) return hc;
     const fc = template.footer.cells.find((c) => c.id === cellId);
@@ -694,9 +1303,35 @@ function findCellById(template: TemplateV2, cellId: string): TemplateGridCell | 
     return null;
 }
 
+function findCellContainingWidget(
+    template: TemplateV2,
+    widgetId: string,
+): TemplateGridCell | null {
+    for (const cell of template.header.cells) {
+        if (cell.children.some((n) => n.id === widgetId)) return cell;
+    }
+    for (const cell of template.footer.cells) {
+        if (cell.children.some((n) => n.id === widgetId)) return cell;
+    }
+    for (const grid of template.body.grids) {
+        for (const cell of grid.cells) {
+            if (cell.children.some((n) => n.id === widgetId)) return cell;
+        }
+    }
+    return null;
+}
+
 // â”€â”€ Tab Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function TabBtn({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+function TabBtn({
+    active,
+    onClick,
+    label,
+}: {
+    active: boolean;
+    onClick: () => void;
+    label: string;
+}) {
     return (
         <button
             onClick={onClick}
@@ -708,7 +1343,9 @@ function TabBtn({ active, onClick, label }: { active: boolean; onClick: () => vo
                 color: active ? "#6366f1" : "#64748b",
                 background: active ? "#f5f3ff" : "transparent",
                 border: "none",
-                borderBottom: active ? "2px solid #6366f1" : "2px solid transparent",
+                borderBottom: active
+                    ? "2px solid #6366f1"
+                    : "2px solid transparent",
                 cursor: "pointer",
                 letterSpacing: "0.04em",
                 textTransform: "uppercase" as const,
@@ -727,16 +1364,45 @@ interface PropsPP {
     selectedId: string | null;
     selectedType: SelectionNodeType;
     focusedSectionId: string;
-    onUpdateGridConfig: (target: SectionTarget, patch: Partial<GridConfig>) => void;
+    onUpdateGridConfig: (
+        target: SectionTarget,
+        patch: Partial<GridConfig>,
+    ) => void;
     onUpdateSectionHeight: (sectionId: "header" | "footer", h: number) => void;
-    onUpdateSectionBg: (target: SectionTarget, bg: SectionGridV2["background"]) => void;
-    onUpdateSectionDividerColor: (target: "header" | "footer", color: string) => void;
-    onUpdateWidgetPlacement: (nodeId: string, p: import("@/types/templateV2").BodyPlacement) => void;
+    onUpdateSectionBg: (
+        target: SectionTarget,
+        bg: SectionGridV2["background"],
+    ) => void;
+    onUpdateSectionDividerColor: (
+        target: "header" | "footer",
+        color: string,
+    ) => void;
+    onUpdateWidgetPlacement: (
+        nodeId: string,
+        p: import("@/types/templateV2").BodyPlacement,
+    ) => void;
     onDeleteNode: (nodeId: string) => void;
-    onAddWidget: (target: SectionTarget, cellId: string, type: ElementType) => void;
-    onUpdateTemplate: (patch: Partial<Pick<TemplateV2, "pageSize" | "orientation" | "pagePadding" | "accentBorders">>) => void;
-    onUpdateWidgetConfig: (nodeId: string, patch: Partial<Pick<TemplateWidget, "config" | "styles" | "bindings" | "placement">>) => void;
+    onAddWidget: (
+        target: SectionTarget,
+        cellId: string,
+        type: ElementType,
+    ) => void;
+    onUpdateTemplate: (
+        patch: Partial<
+            Pick<
+                TemplateV2,
+                "pageSize" | "orientation" | "pagePadding" | "accentBorders"
+            >
+        >,
+    ) => void;
+    onUpdateWidgetConfig: (
+        nodeId: string,
+        patch: Partial<
+            Pick<TemplateWidget, "config" | "styles" | "bindings" | "placement">
+        >,
+    ) => void;
     onUpdateCellFlex: (cellId: string, flex: CellFlex | undefined) => void;
+    onUpdateCellSpan?: (cellId: string, colSpan: number, rowSpan: number) => void;
 }
 
 export function PropertiesPanel({
@@ -753,15 +1419,17 @@ export function PropertiesPanel({
     onUpdateTemplate,
     onUpdateWidgetConfig,
     onUpdateCellFlex,
+    onUpdateCellSpan,
 }: PropsPP) {
-    const [pageMode, setPageMode] = useState(false);
+    const [_pageMode, setPageMode] = useState(false);
+    // Auto-exit page mode when a widget or cell is selected
+    const pageMode =
+        _pageMode && selectedType !== "widget" && selectedType !== "cell";
 
-    // Auto-exit page mode when a widget or cell gets selected
-    useEffect(() => {
-        if (selectedType === "widget" || selectedType === "cell") setPageMode(false);
-    }, [selectedType]);
-
-    const { section, target } = resolveFocusedSection(template, focusedSectionId);
+    const { section, target } = resolveFocusedSection(
+        template,
+        focusedSectionId,
+    );
     const isHF = focusedSectionId === "header" || focusedSectionId === "footer";
 
     // Find selected widget
@@ -776,7 +1444,17 @@ export function PropertiesPanel({
     }
 
     // Find selected cell
-    const selectedCell = (selectedId && selectedType === "cell") ? findCellById(template, selectedId) : null;
+    const selectedCell =
+        selectedId && selectedType === "cell"
+            ? findCellById(template, selectedId)
+            : null;
+
+    // When a widget is selected, also find its containing cell so we can
+    // always show cell layout controls at the bottom of the panel.
+    const widgetParentCell =
+        selectedType === "widget" && selectedWidget
+            ? findCellContainingWidget(template, selectedWidget.id)
+            : null;
 
     // Panel context label
     let panelLabel = "Section Config";
@@ -799,9 +1477,23 @@ export function PropertiesPanel({
             }}
         >
             {/* Tab bar */}
-            <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0", flexShrink: 0 }}>
-                <TabBtn active={!pageMode} onClick={() => setPageMode(false)} label="Section" />
-                <TabBtn active={pageMode} onClick={() => setPageMode(true)} label="Page" />
+            <div
+                style={{
+                    display: "flex",
+                    borderBottom: "1px solid #e2e8f0",
+                    flexShrink: 0,
+                }}
+            >
+                <TabBtn
+                    active={!pageMode}
+                    onClick={() => setPageMode(false)}
+                    label="Section"
+                />
+                <TabBtn
+                    active={pageMode}
+                    onClick={() => setPageMode(true)}
+                    label="Page"
+                />
             </div>
 
             {/* Context label */}
@@ -824,7 +1516,10 @@ export function PropertiesPanel({
             <div style={{ padding: "10px 12px", flex: 1, overflowY: "auto" }}>
                 {pageMode ? (
                     /* â”€â”€ PAGE tab â”€â”€ */
-                    <PageSettingsPanel template={template} onUpdateTemplate={onUpdateTemplate} />
+                    <PageSettingsPanel
+                        template={template}
+                        onUpdateTemplate={onUpdateTemplate}
+                    />
                 ) : (
                     /* â”€â”€ SECTION tab (context-sensitive) â”€â”€ */
                     <>
@@ -832,7 +1527,9 @@ export function PropertiesPanel({
                         {selectedType === "cell" && selectedCell && (
                             <CellFlexPanel
                                 cell={selectedCell}
-                                onChange={(f) => onUpdateCellFlex(selectedCell.id, f)}
+                                onChange={(f) =>
+                                    onUpdateCellFlex(selectedCell.id, f)
+                                }
                             />
                         )}
 
@@ -842,42 +1539,107 @@ export function PropertiesPanel({
                                 {selectedWidget.type === "logo" && (
                                     <LogoWidgetPanel
                                         widget={selectedWidget}
-                                        onUpdateConfig={(patch) => onUpdateWidgetConfig(selectedWidget!.id, patch)}
+                                        onUpdateConfig={(patch) =>
+                                            onUpdateWidgetConfig(
+                                                selectedWidget!.id,
+                                                patch,
+                                            )
+                                        }
                                     />
                                 )}
                                 {selectedWidget.type === "textLabel" && (
                                     <TextLabelPanel
                                         widget={selectedWidget}
-                                        onUpdateConfig={(patch) => onUpdateWidgetConfig(selectedWidget!.id, patch)}
+                                        onUpdateConfig={(patch) =>
+                                            onUpdateWidgetConfig(
+                                                selectedWidget!.id,
+                                                patch,
+                                            )
+                                        }
                                     />
                                 )}
+                                <FieldsConfigPanel
+                                    widget={selectedWidget}
+                                    onUpdateConfig={(patch) =>
+                                        onUpdateWidgetConfig(
+                                            selectedWidget!.id,
+                                            patch,
+                                        )
+                                    }
+                                />
                                 <WidgetConfigPanel
                                     widget={selectedWidget}
-                                    onUpdatePlacement={(p) => onUpdateWidgetPlacement(selectedWidget!.id, p)}
-                                    onDelete={() => onDeleteNode(selectedWidget!.id)}
+                                    onUpdatePlacement={(p) =>
+                                        onUpdateWidgetPlacement(
+                                            selectedWidget!.id,
+                                            p,
+                                        )
+                                    }
+                                    onDelete={() =>
+                                        onDeleteNode(selectedWidget!.id)
+                                    }
                                 />
+                                {widgetParentCell && (
+                                    <CellFlexPanel
+                                        cell={widgetParentCell}
+                                        section={section ?? undefined}
+                                        onChange={(f) =>
+                                            onUpdateCellFlex(
+                                                widgetParentCell.id,
+                                                f,
+                                            )
+                                        }
+                                        onSpanChange={
+                                            onUpdateCellSpan
+                                                ? (cs, rs) =>
+                                                      onUpdateCellSpan(
+                                                          widgetParentCell.id,
+                                                          cs,
+                                                          rs,
+                                                      )
+                                                : undefined
+                                        }
+                                    />
+                                )}
                             </>
                         )}
 
                         {/* Nothing / section selected â†’ grid config */}
-                        {(!selectedType || selectedType === "section") && section && (
-                            <GridConfigPanel
-                                section={section}
-                                isHeaderOrFooter={isHF}
-                                onUpdate={(patch) => onUpdateGridConfig(target, patch)}
-                                onUpdateHeight={
-                                    isHF
-                                        ? (h) => onUpdateSectionHeight(focusedSectionId as "header" | "footer", h)
-                                        : undefined
-                                }
-                                onUpdateBg={(bg) => onUpdateSectionBg(target, bg)}
-                                onUpdateDividerColor={
-                                    isHF
-                                        ? (color) => onUpdateSectionDividerColor(focusedSectionId as "header" | "footer", color)
-                                        : undefined
-                                }
-                            />
-                        )}
+                        {(!selectedType || selectedType === "section") &&
+                            section && (
+                                <GridConfigPanel
+                                    section={section}
+                                    isHeaderOrFooter={isHF}
+                                    onUpdate={(patch) =>
+                                        onUpdateGridConfig(target, patch)
+                                    }
+                                    onUpdateHeight={
+                                        isHF
+                                            ? (h) =>
+                                                  onUpdateSectionHeight(
+                                                      focusedSectionId as
+                                                          | "header"
+                                                          | "footer",
+                                                      h,
+                                                  )
+                                            : undefined
+                                    }
+                                    onUpdateBg={(bg) =>
+                                        onUpdateSectionBg(target, bg)
+                                    }
+                                    onUpdateDividerColor={
+                                        isHF
+                                            ? (color) =>
+                                                  onUpdateSectionDividerColor(
+                                                      focusedSectionId as
+                                                          | "header"
+                                                          | "footer",
+                                                      color,
+                                                  )
+                                            : undefined
+                                    }
+                                />
+                            )}
                     </>
                 )}
             </div>

@@ -18,16 +18,11 @@ function fieldVisible(element: TemplateElement, field: string): boolean {
 export function CompanyDetailsElement({ element, company }: Props) {
     const { fillMode, onUpdateCompany } = useFillMode();
     const f = (field: string) => fieldVisible(element, field);
-    const contentCols =
-        (element.config?.contentCols as number | undefined) ?? 1;
+    const layout = (element.config?.layout as string | undefined) ?? "vertical";
+    const justify = (element.config?.justify as string | undefined) ?? "stretch";
     const gridStyle: React.CSSProperties =
-        contentCols > 1
-            ? {
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${contentCols}, 1fr)`,
-                  gap: "0 12px",
-                  alignItems: "start",
-              }
+        layout === "horizontal"
+            ? { display: "flex", flexDirection: "row", flexWrap: "wrap", gap: "2px 20px", alignItems: "baseline", justifyContent: justify === "stretch" ? "flex-start" : justify }
             : {};
 
     if (fillMode) {
