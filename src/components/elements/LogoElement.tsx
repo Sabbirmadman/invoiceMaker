@@ -116,6 +116,12 @@ export function LogoElement({ element, company }: Props) {
                         element.styles?.maxHeight ??
                         "80px",
                     width: element.styles?.width,
+                    borderRadius: element.styles?.borderRadius,
+                    border:
+                        element.styles?.borderWidth &&
+                        element.styles.borderWidth !== "0px"
+                            ? `${element.styles.borderWidth} ${element.styles.borderStyle ?? "solid"} ${element.styles.borderColor ?? "#e2e8f0"}`
+                            : undefined,
                 }}
             >
                 <ImageIcon className="size-6" />
@@ -134,9 +140,10 @@ export function LogoElement({ element, company }: Props) {
             src={company.logoUrl}
             alt="Company logo"
             style={{
-                width: "100%",
-                height: "100%",
                 objectFit: fitMode,
+                ...(element.styles as React.CSSProperties),
+                width: element.styles?.width ?? "100%",
+                height: element.styles?.maxHeight ?? "100%",
             }}
         />
     ) : (
@@ -146,7 +153,7 @@ export function LogoElement({ element, company }: Props) {
             style={{
                 maxHeight: element.styles?.maxHeight ?? "80px",
                 objectFit: fitMode,
-                ...element.styles,
+                ...(element.styles as React.CSSProperties),
             }}
         />
     );

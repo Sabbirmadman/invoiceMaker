@@ -14,6 +14,35 @@ import type { ElementType, Theme } from "./template";
 // ── Re-export ElementType so consumers only need this file ──────────────────
 export type { ElementType, Theme };
 
+// ── Page-level layout types ──────────────────────────────────────────────────
+
+export interface PagePadding {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+}
+
+export interface AccentBorder {
+    color: string;
+    width: number; // px
+    enabled: boolean;
+}
+
+export interface PageAccentBorders {
+    top?: AccentBorder;
+    right?: AccentBorder;
+    bottom?: AccentBorder;
+    left?: AccentBorder;
+}
+
+export interface CellFlex {
+    direction?: "row" | "column";
+    alignItems?: string;
+    justifyContent?: string;
+    gap?: number;
+}
+
 // ── Placement ───────────────────────────────────────────────────────────────
 
 /**
@@ -50,6 +79,8 @@ export interface TemplateGridCell {
     rowStart: number;
     rowSpan: number;
     children: TemplateNode[];
+    /** Optional flex layout for positioning children inside the cell */
+    flex?: CellFlex;
 }
 
 // ── Grid configuration ───────────────────────────────────────────────────────
@@ -61,9 +92,9 @@ export interface GridConfig {
     colWidths: string[];
     /** Row heights — length must equal `rows`. Defaults to "auto" for each. */
     rowHeights: string[];
-    colGap: number;   // px
-    rowGap: number;   // px
-    padding: number;  // px, uniform for now
+    colGap: number; // px
+    rowGap: number; // px
+    padding: number; // px, uniform for now
 }
 
 // ── Grid section ─────────────────────────────────────────────────────────────
@@ -85,6 +116,8 @@ export interface SectionGridV2 {
         imageUrl?: string;
         imageSize?: "cover" | "contain" | "repeat";
     };
+    /** Color of the divider line at the bottom of header / top of footer */
+    dividerColor?: string;
 }
 
 // ── Body section — multiple independent grids stacked vertically ──────────────
@@ -108,6 +141,10 @@ export interface TemplateV2 {
     header: SectionGridV2;
     body: BodySectionV2;
     footer: SectionGridV2;
+    /** Optional padding inside the page (around all content) */
+    pagePadding?: PagePadding;
+    /** Optional decorative accent borders on the page edges */
+    accentBorders?: PageAccentBorders;
 }
 
 // ── Factory helpers ──────────────────────────────────────────────────────────
@@ -144,15 +181,33 @@ export function makeWidget(
     // Give textLabel a default text so it renders with visible content
     const defaultConfig: Record<string, unknown> =
         type === "textLabel" ? { text: "Text Label" } : {};
-    return { id, kind: "widget", type, placement, config: config ?? defaultConfig };
+    return {
+        id,
+        kind: "widget",
+        type,
+        placement,
+        config: config ?? defaultConfig,
+    };
 }
 
 /** Create a blank SectionGridV2 */
 export function makeSection(
     id: string,
-    options: { height?: number; columns?: number; rows?: number; padding?: number; visible?: boolean } = {},
+    options: {
+        height?: number;
+        columns?: number;
+        rows?: number;
+        padding?: number;
+        visible?: boolean;
+    } = {},
 ): SectionGridV2 {
-    const { height, columns = 1, rows = 1, padding = 16, visible = true } = options;
+    const {
+        height,
+        columns = 1,
+        rows = 1,
+        padding = 16,
+        visible = true,
+    } = options;
     return {
         id,
         visible,
@@ -175,28 +230,40 @@ export function makeBodySection(firstGridId = "body_grid_0"): BodySectionV2 {
 // ── Walk helpers ─────────────────────────────────────────────────────────────
 
 /** Walk a TemplateNode list and call visitor for every node */
-export function walkNodes(nodes: TemplateNode[], visitor: (node: TemplateNode) => void): void {
+export function walkNodes(
+    nodes: TemplateNode[],
+    visitor: (node: TemplateNode) => void,
+): void {
     for (const node of nodes) {
         visitor(node);
     }
 }
 
 /** Walk all nodes in a SectionGridV2 */
-export function walkSectionNodes(section: SectionGridV2, visitor: (node: TemplateNode) => void): void {
+export function walkSectionNodes(
+    section: SectionGridV2,
+    visitor: (node: TemplateNode) => void,
+): void {
     for (const cell of section.cells) {
         walkNodes(cell.children, visitor);
     }
 }
 
 /** Walk all nodes across all body grids */
-export function walkBodyNodes(body: BodySectionV2, visitor: (node: TemplateNode) => void): void {
+export function walkBodyNodes(
+    body: BodySectionV2,
+    visitor: (node: TemplateNode) => void,
+): void {
     for (const grid of body.grids) {
         walkSectionNodes(grid, visitor);
     }
 }
 
 /** Find a node by id anywhere in a SectionGridV2 */
-export function findNodeInSection(section: SectionGridV2, nodeId: string): TemplateNode | null {
+export function findNodeInSection(
+    section: SectionGridV2,
+    nodeId: string,
+): TemplateNode | null {
     let found: TemplateNode | null = null;
     walkSectionNodes(section, (node) => {
         if (node.id === nodeId) found = node;
@@ -205,7 +272,10 @@ export function findNodeInSection(section: SectionGridV2, nodeId: string): Templ
 }
 
 /** Find a node by id in the body (searches all grids) */
-export function findNodeInBody(body: BodySectionV2, nodeId: string): TemplateNode | null {
+export function findNodeInBody(
+    body: BodySectionV2,
+    nodeId: string,
+): TemplateNode | null {
     for (const grid of body.grids) {
         const found = findNodeInSection(grid, nodeId);
         if (found) return found;
@@ -214,7 +284,10 @@ export function findNodeInBody(body: BodySectionV2, nodeId: string): TemplateNod
 }
 
 /** Find which cell (directly) contains a node id */
-export function findCellContaining(section: SectionGridV2, nodeId: string): TemplateGridCell | null {
+export function findCellContaining(
+    section: SectionGridV2,
+    nodeId: string,
+): TemplateGridCell | null {
     for (const cell of section.cells) {
         if (cell.children.some((n) => n.id === nodeId)) return cell;
     }
@@ -222,12 +295,19 @@ export function findCellContaining(section: SectionGridV2, nodeId: string): Temp
 }
 
 /** Remove a node by id from a TemplateNode list */
-export function removeNodeById(nodes: TemplateNode[], nodeId: string): TemplateNode[] {
+export function removeNodeById(
+    nodes: TemplateNode[],
+    nodeId: string,
+): TemplateNode[] {
     return nodes.filter((n) => n.id !== nodeId);
 }
 
 /** Insert a node at a given index into a list */
-export function insertNode(nodes: TemplateNode[], node: TemplateNode, index: number): TemplateNode[] {
+export function insertNode(
+    nodes: TemplateNode[],
+    node: TemplateNode,
+    index: number,
+): TemplateNode[] {
     const result = [...nodes];
     result.splice(index, 0, node);
     return result;
@@ -235,7 +315,9 @@ export function insertNode(nodes: TemplateNode[], node: TemplateNode, index: num
 
 /** Check if a TemplateV2 object (type guard) */
 export function isTemplateV2(t: unknown): t is TemplateV2 {
-    return typeof t === "object" && t !== null && (t as TemplateV2).version === 2;
+    return (
+        typeof t === "object" && t !== null && (t as TemplateV2).version === 2
+    );
 }
 
 /** Collect all widgets from a SectionGridV2 (flattened) */
@@ -257,7 +339,10 @@ export function collectBodyWidgets(body: BodySectionV2): TemplateWidget[] {
 }
 
 /** Remove a node from all cells across a section */
-export function removeNodeFromSection(section: SectionGridV2, nodeId: string): SectionGridV2 {
+export function removeNodeFromSection(
+    section: SectionGridV2,
+    nodeId: string,
+): SectionGridV2 {
     return {
         ...section,
         cells: section.cells.map((cell) => ({
@@ -268,7 +353,10 @@ export function removeNodeFromSection(section: SectionGridV2, nodeId: string): S
 }
 
 /** Remove a node from all body grids */
-export function removeNodeFromBody(body: BodySectionV2, nodeId: string): BodySectionV2 {
+export function removeNodeFromBody(
+    body: BodySectionV2,
+    nodeId: string,
+): BodySectionV2 {
     return {
         grids: body.grids.map((g) => removeNodeFromSection(g, nodeId)),
     };

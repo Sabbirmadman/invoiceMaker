@@ -35,11 +35,19 @@ export function EditorCell({
     onDrop,
 }: Props) {
     const { isSelected, selectNode } = useEditorSelection();
-    const { setDropTarget, dropTargetId, endDrag, draggingWidgetType, draggingNodeId } = useDrag();
+    const {
+        setDropTarget,
+        dropTargetId,
+        endDrag,
+        draggingWidgetType,
+        draggingNodeId,
+    } = useDrag();
 
     const selected = editMode && isSelected(cell.id);
     const isDropTarget = editMode && dropTargetId === cell.id;
-    const isDraggingOver = isDropTarget && (draggingWidgetType !== null || draggingNodeId !== null);
+    const isDraggingOver =
+        isDropTarget &&
+        (draggingWidgetType !== null || draggingNodeId !== null);
 
     function handleClick(e: React.MouseEvent) {
         if (!editMode) return;
@@ -86,7 +94,9 @@ export function EditorCell({
                     ? "2px dashed #2563eb"
                     : "1px dashed #d1d5db",
               outlineOffset: -1,
-              backgroundColor: isDraggingOver ? "rgba(37, 99, 235, 0.04)" : undefined,
+              backgroundColor: isDraggingOver
+                  ? "rgba(37, 99, 235, 0.04)"
+                  : undefined,
               transition: "outline-color 0.1s, background-color 0.1s",
           }
         : {};
@@ -123,12 +133,24 @@ export function EditorCell({
                     className="group-hover/cell:opacity-100"
                 >
                     {cell.colStart}:{cell.rowStart}
-                    {(cell.colSpan > 1 || cell.rowSpan > 1) && ` (${cell.colSpan}×${cell.rowSpan})`}
+                    {(cell.colSpan > 1 || cell.rowSpan > 1) &&
+                        ` (${cell.colSpan}×${cell.rowSpan})`}
                 </div>
             )}
 
-            {/* Children — stacked vertically */}
-            <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 4 }}>
+            {/* Children — flex container with user-configurable direction/align */}
+            <div
+                style={{
+                    display: "flex",
+                    flexDirection: cell.flex?.direction ?? "column",
+                    alignItems:
+                        cell.flex?.alignItems ??
+                        (cell.flex?.direction === "row" ? "center" : "stretch"),
+                    justifyContent: cell.flex?.justifyContent ?? "flex-start",
+                    height: "100%",
+                    gap: cell.flex?.gap ?? 4,
+                }}
+            >
                 {cell.children.map((node) => (
                     <NodeRenderer
                         key={node.id}

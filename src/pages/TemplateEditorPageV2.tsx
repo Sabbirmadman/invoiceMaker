@@ -9,7 +9,17 @@
  */
 import React, { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Undo2, Redo2, Eye, Save, Plus, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
+import {
+    ArrowLeft,
+    Undo2,
+    Redo2,
+    Eye,
+    Save,
+    Plus,
+    ChevronUp,
+    ChevronDown,
+    Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import type { TemplateV2 } from "@/types/templateV2";
@@ -21,7 +31,10 @@ import { useTemplateEditor } from "@/hooks/useTemplateEditor";
 import type { SectionTarget } from "@/hooks/useTemplateEditor";
 import { ensureV2, createBlankTemplateV2 } from "@/utils/migrateTemplate";
 
-import { EditorSelectionProvider, useEditorSelection } from "@/components/editor/EditorSelectionContext";
+import {
+    EditorSelectionProvider,
+    useEditorSelection,
+} from "@/components/editor/EditorSelectionContext";
 import { DragProvider, useDrag } from "@/components/editor/DragContext";
 import { WidgetPalette } from "@/components/editor/WidgetPalette";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
@@ -50,9 +63,19 @@ function makeDummyDoc(template: TemplateV2): StoredDocument {
             pageSize: template.pageSize,
             orientation: template.orientation,
             theme: template.theme,
-            header: { height: template.header.height ?? 120, visible: template.header.visible, grid: { columns: [], rows: [] }, elements: [] },
+            header: {
+                height: template.header.height ?? 120,
+                visible: template.header.visible,
+                grid: { columns: [], rows: [] },
+                elements: [],
+            },
             body: { elements: [] },
-            footer: { height: template.footer.height ?? 60, visible: template.footer.visible, grid: { columns: [], rows: [] }, elements: [] },
+            footer: {
+                height: template.footer.height ?? 60,
+                visible: template.footer.visible,
+                grid: { columns: [], rows: [] },
+                elements: [],
+            },
         } as import("@/types/template").Template,
         data: {
             company: {
@@ -93,7 +116,18 @@ function makeDummyDoc(template: TemplateV2): StoredDocument {
                 placeOfSupply: "",
             },
             items: [
-                { id: "1", name: "Sample Item", description: "", qty: 1, unit: "", rate: 100, discount: 0, discountType: "percent" as const, taxRate: 0, amount: 100 },
+                {
+                    id: "1",
+                    name: "Sample Item",
+                    description: "",
+                    qty: 1,
+                    unit: "",
+                    rate: 100,
+                    discount: 0,
+                    discountType: "percent" as const,
+                    taxRate: 0,
+                    amount: 100,
+                },
             ],
             totalsConfig: {
                 currency: "USD",
@@ -113,11 +147,7 @@ function makeDummyDoc(template: TemplateV2): StoredDocument {
 
 // ── Inner editor (has access to DragContext + SelectionContext) ────────────────
 
-function EditorInner({
-    templateId,
-}: {
-    templateId: string | undefined;
-}) {
+function EditorInner({ templateId }: { templateId: string | undefined }) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const { selectedId, selectedType, clearSelection } = useEditorSelection();
@@ -129,9 +159,12 @@ function EditorInner({
     );
 
     const initialTemplate = useMemo<TemplateV2>(() => {
-        if (existingTemplate) return ensureV2(existingTemplate as import("@/types/template").Template);
+        if (existingTemplate)
+            return ensureV2(
+                existingTemplate as import("@/types/template").Template,
+            );
         return createBlankTemplateV2(`tpl_${Date.now()}`, "New Template");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [templateId]);
 
     const editor = useTemplateEditor(initialTemplate);
@@ -141,21 +174,29 @@ function EditorInner({
     const [previewMode, setPreviewMode] = useState(false);
     // focusedSection: "header" | "footer" | a body grid id
     const [focusedSection, setFocusedSection] = useState<string>(
-        template.body.grids[0]?.id ?? "body"
+        template.body.grids[0]?.id ?? "body",
     );
 
     const dummyDoc = useMemo(() => makeDummyDoc(template), [template]);
-    const totals = useMemo(() => calculateTotals(dummyDoc.data.items, dummyDoc.data.totalsConfig), [dummyDoc]);
+    const totals = useMemo(
+        () => calculateTotals(dummyDoc.data.items, dummyDoc.data.totalsConfig),
+        [dummyDoc],
+    );
     const dims = PAGE_DIMENSIONS[template.pageSize];
 
     // ── Drop handler — resolves drag payload and calls editor ──────────────
 
     function resolveSection(cellId: string): SectionTarget {
-        if (cellId.startsWith("empty_header") || cellId.startsWith("header")) return "header";
-        if (cellId.startsWith("empty_footer") || cellId.startsWith("footer")) return "footer";
+        if (cellId.startsWith("empty_header") || cellId.startsWith("header"))
+            return "header";
+        if (cellId.startsWith("empty_footer") || cellId.startsWith("footer"))
+            return "footer";
         // Check if cellId matches a body grid id prefix
         for (const grid of template.body.grids) {
-            if (cellId.startsWith(`empty_${grid.id}`) || cellId.startsWith(grid.id)) {
+            if (
+                cellId.startsWith(`empty_${grid.id}`) ||
+                cellId.startsWith(grid.id)
+            ) {
                 return { bodyGridId: grid.id };
             }
         }
@@ -168,7 +209,12 @@ function EditorInner({
 
     function handleDropIntoCell(cellId: string, dropIndex: number) {
         if (draggingWidgetType) {
-            editor.addWidget(resolveSection(cellId), cellId, draggingWidgetType, dropIndex);
+            editor.addWidget(
+                resolveSection(cellId),
+                cellId,
+                draggingWidgetType,
+                dropIndex,
+            );
         } else if (draggingNodeId) {
             editor.moveNode(draggingNodeId, cellId, dropIndex);
         }
@@ -191,37 +237,56 @@ function EditorInner({
     const canvasWidth = dims.width;
 
     return (
-        <FillModeProvider value={{
-            fillMode: false,
-            showBounds: false,
-            docId: "preview",
-            onUpdateCompany: () => {},
-            onUpdateClient: () => {},
-            onUpdateInvoiceMeta: () => {},
-            onUpdateEstimateMeta: () => {},
-            onUpdateReceiptMeta: () => {},
-            onUpdateItems: () => {},
-            onUpdateTotalsConfig: () => {},
-            onUpdateNotes: () => {},
-            onUpdateTerms: () => {},
-            onUpdateData: () => {},
-        }}>
-            <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: "#f8fafc" }}>
-
-                {/* ── Toolbar ── */}
-                <header style={{
+        <FillModeProvider
+            value={{
+                fillMode: false,
+                showBounds: false,
+                docId: "preview",
+                onUpdateCompany: () => {},
+                onUpdateClient: () => {},
+                onUpdateInvoiceMeta: () => {},
+                onUpdateEstimateMeta: () => {},
+                onUpdateReceiptMeta: () => {},
+                onUpdateItems: () => {},
+                onUpdateTotalsConfig: () => {},
+                onUpdateNotes: () => {},
+                onUpdateTerms: () => {},
+                onUpdateData: () => {},
+            }}
+        >
+            <div
+                style={{
                     display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "6px 16px",
-                    background: "white",
-                    borderBottom: "1px solid #e2e8f0",
-                    flexShrink: 0,
-                    zIndex: 100,
-                }}>
+                    flexDirection: "column",
+                    height: "100vh",
+                    overflow: "hidden",
+                    background: "#f8fafc",
+                }}
+            >
+                {/* ── Toolbar ── */}
+                <header
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "6px 16px",
+                        background: "white",
+                        borderBottom: "1px solid #e2e8f0",
+                        flexShrink: 0,
+                        zIndex: 100,
+                    }}
+                >
                     <button
                         onClick={() => navigate(-1)}
-                        style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", color: "#64748b", padding: 4 }}
+                        style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            color: "#64748b",
+                            padding: 4,
+                        }}
                     >
                         <ArrowLeft size={16} />
                     </button>
@@ -238,15 +303,39 @@ function EditorInner({
                             outline: "none",
                             minWidth: 160,
                         }}
-                        onBlur={() => {/* could auto-save name */}}
+                        onBlur={() => {
+                            /* could auto-save name */
+                        }}
                     />
 
                     <div style={{ flex: 1 }} />
 
-                    <button onClick={undo} disabled={!canUndo} title="Undo" style={{ background: "none", border: "none", cursor: canUndo ? "pointer" : "default", color: canUndo ? "#374151" : "#d1d5db", padding: 4 }}>
+                    <button
+                        onClick={undo}
+                        disabled={!canUndo}
+                        title="Undo"
+                        style={{
+                            background: "none",
+                            border: "none",
+                            cursor: canUndo ? "pointer" : "default",
+                            color: canUndo ? "#374151" : "#d1d5db",
+                            padding: 4,
+                        }}
+                    >
                         <Undo2 size={16} />
                     </button>
-                    <button onClick={redo} disabled={!canRedo} title="Redo" style={{ background: "none", border: "none", cursor: canRedo ? "pointer" : "default", color: canRedo ? "#374151" : "#d1d5db", padding: 4 }}>
+                    <button
+                        onClick={redo}
+                        disabled={!canRedo}
+                        title="Redo"
+                        style={{
+                            background: "none",
+                            border: "none",
+                            cursor: canRedo ? "pointer" : "default",
+                            color: canRedo ? "#374151" : "#d1d5db",
+                            padding: 4,
+                        }}
+                    >
                         <Redo2 size={16} />
                     </button>
 
@@ -255,7 +344,8 @@ function EditorInner({
                         size="sm"
                         onClick={() => setPreviewMode((v) => !v)}
                     >
-                        <Eye className="size-3.5 mr-1" /> {previewMode ? "Edit" : "Preview"}
+                        <Eye className="size-3.5 mr-1" />{" "}
+                        {previewMode ? "Edit" : "Preview"}
                     </Button>
 
                     <Button size="sm" onClick={handleSave}>
@@ -265,7 +355,6 @@ function EditorInner({
 
                 {/* ── Main 3-panel layout ── */}
                 <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-
                     {/* Left: Widget Palette — hidden in preview mode */}
                     {!previewMode && (
                         <WidgetPalette
@@ -278,7 +367,14 @@ function EditorInner({
 
                     {/* Center: Canvas */}
                     <div
-                        style={{ flex: 1, overflow: "auto", padding: "24px 0", background: "#e5e7eb", display: "flex", justifyContent: "center" }}
+                        style={{
+                            flex: 1,
+                            overflow: "auto",
+                            padding: "24px 0",
+                            background: "#e5e7eb",
+                            display: "flex",
+                            justifyContent: "center",
+                        }}
                         onClick={handleCanvasClick}
                     >
                         <div
@@ -290,144 +386,296 @@ function EditorInner({
                                 overflow: "hidden",
                                 fontFamily: template.theme.fontFamily,
                                 color: template.theme.primaryColor,
+                                borderLeft: template.accentBorders?.left
+                                    ?.enabled
+                                    ? `${template.accentBorders.left.width}px solid ${template.accentBorders.left.color}`
+                                    : undefined,
+                                borderRight: template.accentBorders?.right
+                                    ?.enabled
+                                    ? `${template.accentBorders.right.width}px solid ${template.accentBorders.right.color}`
+                                    : undefined,
                             }}
                         >
-                            {/* Header */}
-                            {template.header.visible && (
+                            {template.accentBorders?.top?.enabled && (
                                 <div
-                                    style={{ borderBottom: "1px solid #e2e8f0", cursor: previewMode ? "default" : "pointer" }}
-                                    onClick={(e) => { if (!previewMode) { e.stopPropagation(); setFocusedSection("header"); } }}
-                                >
-                                    <EditorGrid
-                                        section={template.header}
-                                        sectionLabel={previewMode ? undefined : "Header"}
-                                        doc={dummyDoc}
-                                        totals={totals}
-                                        editMode={!previewMode}
-                                        onDropIntoCell={handleDropIntoCell}
-
-                                        onSettingsClick={() => setFocusedSection("header")}
-                                    />
-                                </div>
+                                    style={{
+                                        height: template.accentBorders.top
+                                            .width,
+                                        background:
+                                            template.accentBorders.top.color,
+                                    }}
+                                />
                             )}
-
-                            {/* Body — multiple grids */}
-                            <div style={{ minHeight: 200 }}>
-                                {template.body.grids.map((grid, idx) => (
+                            <div
+                                style={{
+                                    paddingTop: template.pagePadding?.top ?? 0,
+                                    paddingRight:
+                                        template.pagePadding?.right ?? 0,
+                                    paddingBottom:
+                                        template.pagePadding?.bottom ?? 0,
+                                    paddingLeft:
+                                        template.pagePadding?.left ?? 0,
+                                }}
+                            >
+                                {/* Header */}
+                                {template.header.visible && (
                                     <div
-                                        key={grid.id}
                                         style={{
-                                            cursor: previewMode ? "default" : "pointer",
-                                            borderTop: !previewMode && idx > 0 ? "2px dashed #cbd5e1" : undefined,
-                                            position: "relative",
+                                            borderBottom: template.header
+                                                .dividerColor
+                                                ? `1px solid ${template.header.dividerColor}`
+                                                : "1px solid #e2e8f0",
+                                            cursor: previewMode
+                                                ? "default"
+                                                : "pointer",
                                         }}
-                                        onClick={(e) => { if (!previewMode) { e.stopPropagation(); setFocusedSection(grid.id); } }}
+                                        onClick={(e) => {
+                                            if (!previewMode) {
+                                                e.stopPropagation();
+                                                setFocusedSection("header");
+                                            }
+                                        }}
                                     >
-                                        {/* Per-grid controls — editor only */}
-                                        <div
-                                            style={{
-                                                position: "absolute",
-                                                top: 4,
-                                                right: 4,
-                                                display: previewMode ? "none" : "flex",
-                                                gap: 2,
-                                                zIndex: 20,
-                                                opacity: focusedSection === grid.id ? 1 : 0,
-                                                transition: "opacity 0.15s",
-                                            }}
-                                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <button
-                                                title="Move grid up"
-                                                disabled={idx === 0}
-                                                onClick={() => editor.moveBodyGrid(grid.id, "up")}
-                                                style={iconBtnStyle(idx === 0)}
-                                            >
-                                                <ChevronUp size={12} />
-                                            </button>
-                                            <button
-                                                title="Move grid down"
-                                                disabled={idx === template.body.grids.length - 1}
-                                                onClick={() => editor.moveBodyGrid(grid.id, "down")}
-                                                style={iconBtnStyle(idx === template.body.grids.length - 1)}
-                                            >
-                                                <ChevronDown size={12} />
-                                            </button>
-                                            <button
-                                                title="Delete grid"
-                                                disabled={template.body.grids.length <= 1}
-                                                onClick={() => {
-                                                    editor.removeBodyGrid(grid.id);
-                                                    // Move focus away if this grid was focused
-                                                    if (focusedSection === grid.id) {
-                                                        const next = template.body.grids.find(g => g.id !== grid.id);
-                                                        setFocusedSection(next?.id ?? "body");
-                                                    }
-                                                }}
-                                                style={iconBtnStyle(template.body.grids.length <= 1, true)}
-                                            >
-                                                <Trash2 size={12} />
-                                            </button>
-                                        </div>
-
                                         <EditorGrid
-                                            section={grid}
+                                            section={template.header}
+                                            sectionLabel={
+                                                previewMode
+                                                    ? undefined
+                                                    : "Header"
+                                            }
                                             doc={dummyDoc}
                                             totals={totals}
                                             editMode={!previewMode}
                                             onDropIntoCell={handleDropIntoCell}
-    
-                                            onSettingsClick={() => setFocusedSection(grid.id)}
+                                            onSettingsClick={() =>
+                                                setFocusedSection("header")
+                                            }
                                         />
                                     </div>
-                                ))}
+                                )}
 
-                                {/* Add Grid button — editor only */}
-                                {!previewMode && (
-                                    <div style={{ display: "flex", justifyContent: "center", padding: "8px 0" }}>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const newGridId = editor.addBodyGrid();
-                                                setFocusedSection(newGridId);
-                                            }}
+                                {/* Body — multiple grids */}
+                                <div style={{ minHeight: 200 }}>
+                                    {template.body.grids.map((grid, idx) => (
+                                        <div
+                                            key={grid.id}
                                             style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: 4,
-                                                fontSize: 12,
-                                                color: "#6366f1",
-                                                background: "none",
-                                                border: "1px dashed #6366f1",
-                                                borderRadius: 6,
-                                                padding: "4px 12px",
-                                                cursor: "pointer",
+                                                cursor: previewMode
+                                                    ? "default"
+                                                    : "pointer",
+                                                borderTop:
+                                                    !previewMode && idx > 0
+                                                        ? "2px dashed #cbd5e1"
+                                                        : undefined,
+                                                position: "relative",
+                                            }}
+                                            onClick={(e) => {
+                                                if (!previewMode) {
+                                                    e.stopPropagation();
+                                                    setFocusedSection(grid.id);
+                                                }
                                             }}
                                         >
-                                            <Plus size={12} /> Add Body Grid
-                                        </button>
+                                            {/* Per-grid controls — editor only */}
+                                            <div
+                                                style={{
+                                                    position: "absolute",
+                                                    top: 4,
+                                                    right: 4,
+                                                    display: previewMode
+                                                        ? "none"
+                                                        : "flex",
+                                                    gap: 2,
+                                                    zIndex: 20,
+                                                    opacity:
+                                                        focusedSection ===
+                                                        grid.id
+                                                            ? 1
+                                                            : 0,
+                                                    transition: "opacity 0.15s",
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    (
+                                                        e.currentTarget as HTMLElement
+                                                    ).style.opacity = "1";
+                                                }}
+                                                onClick={(e) =>
+                                                    e.stopPropagation()
+                                                }
+                                            >
+                                                <button
+                                                    title="Move grid up"
+                                                    disabled={idx === 0}
+                                                    onClick={() =>
+                                                        editor.moveBodyGrid(
+                                                            grid.id,
+                                                            "up",
+                                                        )
+                                                    }
+                                                    style={iconBtnStyle(
+                                                        idx === 0,
+                                                    )}
+                                                >
+                                                    <ChevronUp size={12} />
+                                                </button>
+                                                <button
+                                                    title="Move grid down"
+                                                    disabled={
+                                                        idx ===
+                                                        template.body.grids
+                                                            .length -
+                                                            1
+                                                    }
+                                                    onClick={() =>
+                                                        editor.moveBodyGrid(
+                                                            grid.id,
+                                                            "down",
+                                                        )
+                                                    }
+                                                    style={iconBtnStyle(
+                                                        idx ===
+                                                            template.body.grids
+                                                                .length -
+                                                                1,
+                                                    )}
+                                                >
+                                                    <ChevronDown size={12} />
+                                                </button>
+                                                <button
+                                                    title="Delete grid"
+                                                    disabled={
+                                                        template.body.grids
+                                                            .length <= 1
+                                                    }
+                                                    onClick={() => {
+                                                        editor.removeBodyGrid(
+                                                            grid.id,
+                                                        );
+                                                        // Move focus away if this grid was focused
+                                                        if (
+                                                            focusedSection ===
+                                                            grid.id
+                                                        ) {
+                                                            const next =
+                                                                template.body.grids.find(
+                                                                    (g) =>
+                                                                        g.id !==
+                                                                        grid.id,
+                                                                );
+                                                            setFocusedSection(
+                                                                next?.id ??
+                                                                    "body",
+                                                            );
+                                                        }
+                                                    }}
+                                                    style={iconBtnStyle(
+                                                        template.body.grids
+                                                            .length <= 1,
+                                                        true,
+                                                    )}
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+
+                                            <EditorGrid
+                                                section={grid}
+                                                doc={dummyDoc}
+                                                totals={totals}
+                                                editMode={!previewMode}
+                                                onDropIntoCell={
+                                                    handleDropIntoCell
+                                                }
+                                                onSettingsClick={() =>
+                                                    setFocusedSection(grid.id)
+                                                }
+                                            />
+                                        </div>
+                                    ))}
+
+                                    {/* Add Grid button — editor only */}
+                                    {!previewMode && (
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                justifyContent: "center",
+                                                padding: "8px 0",
+                                            }}
+                                        >
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const newGridId =
+                                                        editor.addBodyGrid();
+                                                    setFocusedSection(
+                                                        newGridId,
+                                                    );
+                                                }}
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: 4,
+                                                    fontSize: 12,
+                                                    color: "#6366f1",
+                                                    background: "none",
+                                                    border: "1px dashed #6366f1",
+                                                    borderRadius: 6,
+                                                    padding: "4px 12px",
+                                                    cursor: "pointer",
+                                                }}
+                                            >
+                                                <Plus size={12} /> Add Body Grid
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Footer */}
+                                {template.footer.visible && (
+                                    <div
+                                        style={{
+                                            borderTop: template.footer
+                                                .dividerColor
+                                                ? `1px solid ${template.footer.dividerColor}`
+                                                : "1px solid #e2e8f0",
+                                            cursor: previewMode
+                                                ? "default"
+                                                : "pointer",
+                                        }}
+                                        onClick={(e) => {
+                                            if (!previewMode) {
+                                                e.stopPropagation();
+                                                setFocusedSection("footer");
+                                            }
+                                        }}
+                                    >
+                                        <EditorGrid
+                                            section={template.footer}
+                                            sectionLabel={
+                                                previewMode
+                                                    ? undefined
+                                                    : "Footer"
+                                            }
+                                            doc={dummyDoc}
+                                            totals={totals}
+                                            editMode={!previewMode}
+                                            onDropIntoCell={handleDropIntoCell}
+                                            onSettingsClick={() =>
+                                                setFocusedSection("footer")
+                                            }
+                                        />
                                     </div>
                                 )}
                             </div>
-
-                            {/* Footer */}
-                            {template.footer.visible && (
+                            {template.accentBorders?.bottom?.enabled && (
                                 <div
-                                    style={{ borderTop: "1px solid #e2e8f0", cursor: previewMode ? "default" : "pointer" }}
-                                    onClick={(e) => { if (!previewMode) { e.stopPropagation(); setFocusedSection("footer"); } }}
-                                >
-                                    <EditorGrid
-                                        section={template.footer}
-                                        sectionLabel={previewMode ? undefined : "Footer"}
-                                        doc={dummyDoc}
-                                        totals={totals}
-                                        editMode={!previewMode}
-                                        onDropIntoCell={handleDropIntoCell}
-
-                                        onSettingsClick={() => setFocusedSection("footer")}
-                                    />
-                                </div>
+                                    style={{
+                                        height: template.accentBorders.bottom
+                                            .width,
+                                        background:
+                                            template.accentBorders.bottom.color,
+                                    }}
+                                />
                             )}
                         </div>
                     </div>
@@ -439,18 +687,28 @@ function EditorInner({
                             selectedId={selectedId}
                             selectedType={selectedType}
                             focusedSectionId={
-                                focusedSection === "header" ? "header"
-                                : focusedSection === "footer" ? "footer"
-                                : focusedSection  // body grid id
+                                focusedSection === "header"
+                                    ? "header"
+                                    : focusedSection === "footer"
+                                      ? "footer"
+                                      : focusedSection // body grid id
                             }
                             onUpdateGridConfig={editor.updateGridConfig}
                             onUpdateSectionHeight={editor.updateSectionHeight}
                             onUpdateSectionBg={editor.updateSectionBackground}
                             onUpdateWidgetPlacement={(nodeId, p) =>
-                                editor.updateWidgetConfig(nodeId, { placement: p })
+                                editor.updateWidgetConfig(nodeId, {
+                                    placement: p,
+                                })
                             }
                             onDeleteNode={editor.deleteNode}
                             onAddWidget={editor.addWidget}
+                            onUpdateTemplate={editor.updateTemplate}
+                            onUpdateWidgetConfig={editor.updateWidgetConfig}
+                            onUpdateCellFlex={editor.updateCellFlex}
+                            onUpdateSectionDividerColor={
+                                editor.updateSectionDividerColor
+                            }
                         />
                     )}
                 </div>
