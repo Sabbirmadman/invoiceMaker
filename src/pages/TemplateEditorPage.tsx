@@ -36,6 +36,7 @@ import {
     wizardStateFromTemplate,
     COMPANY_FIELD_OPTIONS,
     ALL_COMPANY_FIELDS,
+    getDetailsFieldOptions,
 } from "@/utils/buildTemplate";
 import type {
     WizardState,
@@ -419,11 +420,13 @@ function ColumnConfigurator({
     onChange,
     slotOptions,
     sectionType,
+    documentType,
 }: {
     columns: ColumnConfig[];
     onChange: (cols: ColumnConfig[]) => void;
     slotOptions: { value: string; label: string }[];
     sectionType: "header" | "footer";
+    documentType: DocumentType;
 }) {
     const numCols = columns.length;
 
@@ -570,6 +573,39 @@ function ColumnConfigurator({
                             })}
                         </div>
                     </div>
+                    {/* Content grid columns — controls how many internal columns the element's fields use */}
+                    {(col.element === "companyDetails" ||
+                        col.element === "detailsBlock") && (
+                        <div>
+                            <Label className="text-xs text-muted-foreground">
+                                Content columns
+                            </Label>
+                            <p className="text-[10px] text-muted-foreground/70 mt-0.5 mb-1">
+                                Spread fields horizontally to reduce height
+                            </p>
+                            <div className="flex gap-1">
+                                {[1, 2, 3].map((n) => (
+                                    <button
+                                        key={n}
+                                        type="button"
+                                        onClick={() =>
+                                            updateCol(i, {
+                                                contentCols:
+                                                    n === 1 ? undefined : n,
+                                            })
+                                        }
+                                        className={`flex-1 py-1.5 rounded border text-xs transition-colors ${
+                                            (col.contentCols ?? 1) === n
+                                                ? "bg-primary text-primary-foreground border-primary"
+                                                : "border-border hover:bg-muted"
+                                        }`}
+                                    >
+                                        {n} col{n > 1 ? "s" : ""}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     {col.element === "companyDetails" && (
                         <div>
                             <Label className="text-xs text-muted-foreground mb-1.5 block">
@@ -621,6 +657,63 @@ function ColumnConfigurator({
                             </div>
                         </div>
                     )}
+                    {col.element === "detailsBlock" &&
+                        (() => {
+                            const fieldOptions =
+                                getDetailsFieldOptions(documentType);
+                            const allFields = fieldOptions.map((o) => o.value);
+                            const activeFields = col.detailsFields ?? allFields;
+                            return (
+                                <div>
+                                    <Label className="text-xs text-muted-foreground mb-1.5 block">
+                                        Visible Fields
+                                    </Label>
+                                    <div className="grid grid-cols-2 gap-y-1.5 gap-x-3">
+                                        {fieldOptions.map((opt) => {
+                                            const checked =
+                                                activeFields.includes(
+                                                    opt.value,
+                                                );
+                                            return (
+                                                <label
+                                                    key={opt.value}
+                                                    className="flex items-center gap-2 cursor-pointer group"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={(e) => {
+                                                            const next = e
+                                                                .target.checked
+                                                                ? [
+                                                                      ...activeFields,
+                                                                      opt.value,
+                                                                  ]
+                                                                : activeFields.filter(
+                                                                      (f) =>
+                                                                          f !==
+                                                                          opt.value,
+                                                                  );
+                                                            updateCol(i, {
+                                                                detailsFields:
+                                                                    next.length >
+                                                                    0
+                                                                        ? next
+                                                                        : activeFields,
+                                                            });
+                                                        }}
+                                                        className="size-3.5 rounded"
+                                                    />
+                                                    <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                                                        {opt.label}
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })()}
                 </div>
             ))}
         </div>
@@ -707,28 +800,17 @@ function HeaderFooterSection({
     return (
         <>
             <SectionGroup title="Header">
-                <div className="grid grid-cols-2 gap-3">
-                    <div>
-                        <Label className="text-xs text-muted-foreground">
-                            Height (px)
-                        </Label>
-                        <Input
-                            type="number"
-                            min={60}
-                            max={300}
-                            value={state.headerHeight}
-                            onChange={(e) =>
-                                patch({ headerHeight: Number(e.target.value) })
-                            }
-                            className="h-8 mt-1"
-                        />
-                    </div>
-                    <ColorInput
-                        label="Background Color"
-                        value={state.headerBackground}
-                        onChange={(v) => patch({ headerBackground: v })}
-                    />
-                </div>
+                <p className="text-xs text-muted-foreground -mt-1">
+                    Drag the handle on the preview to resize. Current:{" "}
+                    <span className="font-medium text-foreground">
+                        {state.headerHeight}px
+                    </span>
+                </p>
+                <ColorInput
+                    label="Background Color"
+                    value={state.headerBackground}
+                    onChange={(v) => patch({ headerBackground: v })}
+                />
 
                 <ImageUploadInput
                     label="Background Image"
@@ -747,6 +829,7 @@ function HeaderFooterSection({
                     onChange={(cols) => patch({ headerColumns: cols })}
                     slotOptions={HEADER_SLOT_OPTIONS}
                     sectionType="header"
+                    documentType={state.documentType}
                 />
             </SectionGroup>
 
@@ -799,28 +882,17 @@ function HeaderFooterSection({
             )}
 
             <SectionGroup title="Footer">
-                <div className="grid grid-cols-2 gap-3">
-                    <div>
-                        <Label className="text-xs text-muted-foreground">
-                            Height (px)
-                        </Label>
-                        <Input
-                            type="number"
-                            min={40}
-                            max={200}
-                            value={state.footerHeight}
-                            onChange={(e) =>
-                                patch({ footerHeight: Number(e.target.value) })
-                            }
-                            className="h-8 mt-1"
-                        />
-                    </div>
-                    <ColorInput
-                        label="Background Color"
-                        value={state.footerBackground}
-                        onChange={(v) => patch({ footerBackground: v })}
-                    />
-                </div>
+                <p className="text-xs text-muted-foreground -mt-1">
+                    Drag the handle on the preview to resize. Current:{" "}
+                    <span className="font-medium text-foreground">
+                        {state.footerHeight}px
+                    </span>
+                </p>
+                <ColorInput
+                    label="Background Color"
+                    value={state.footerBackground}
+                    onChange={(v) => patch({ footerBackground: v })}
+                />
 
                 <ColorInput
                     label="Border Color"
@@ -845,6 +917,7 @@ function HeaderFooterSection({
                     onChange={(cols) => patch({ footerColumns: cols })}
                     slotOptions={FOOTER_SLOT_OPTIONS}
                     sectionType="footer"
+                    documentType={state.documentType}
                 />
             </SectionGroup>
         </>
@@ -1027,6 +1100,112 @@ function BodySection({
                     ))}
                 </div>
             </SectionGroup>
+
+            {state.showCompanyDetails && (
+                <SectionGroup
+                    title="Company Details Fields"
+                    defaultOpen={false}
+                >
+                    <p className="text-xs text-muted-foreground -mt-1">
+                        Choose which fields to show in the body.
+                    </p>
+                    <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
+                        {COMPANY_FIELD_OPTIONS.map((opt) => {
+                            const activeFields =
+                                state.bodyCompanyFields ?? ALL_COMPANY_FIELDS;
+                            const checked = activeFields.includes(opt.value);
+                            return (
+                                <label
+                                    key={opt.value}
+                                    className="flex items-center gap-2 cursor-pointer group"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={(e) => {
+                                            const next = e.target.checked
+                                                ? [...activeFields, opt.value]
+                                                : activeFields.filter(
+                                                      (f) => f !== opt.value,
+                                                  );
+                                            patch({
+                                                bodyCompanyFields:
+                                                    next.length > 0
+                                                        ? next
+                                                        : activeFields,
+                                            });
+                                        }}
+                                        className="size-4 rounded"
+                                    />
+                                    <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                                        {opt.label}
+                                    </span>
+                                </label>
+                            );
+                        })}
+                    </div>
+                </SectionGroup>
+            )}
+
+            {state.showDetailsBlock &&
+                (() => {
+                    const fieldOptions = getDetailsFieldOptions(
+                        state.documentType,
+                    );
+                    const allFields = fieldOptions.map((o) => o.value);
+                    const activeFields = state.bodyDetailsFields ?? allFields;
+                    return (
+                        <SectionGroup
+                            title={`${detailsLabel} Fields`}
+                            defaultOpen={false}
+                        >
+                            <p className="text-xs text-muted-foreground -mt-1">
+                                Choose which fields to show in the body.
+                            </p>
+                            <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
+                                {fieldOptions.map((opt) => {
+                                    const checked = activeFields.includes(
+                                        opt.value,
+                                    );
+                                    return (
+                                        <label
+                                            key={opt.value}
+                                            className="flex items-center gap-2 cursor-pointer group"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={(e) => {
+                                                    const next = e.target
+                                                        .checked
+                                                        ? [
+                                                              ...activeFields,
+                                                              opt.value,
+                                                          ]
+                                                        : activeFields.filter(
+                                                              (f) =>
+                                                                  f !==
+                                                                  opt.value,
+                                                          );
+                                                    patch({
+                                                        bodyDetailsFields:
+                                                            next.length > 0
+                                                                ? next
+                                                                : activeFields,
+                                                    });
+                                                }}
+                                                className="size-4 rounded"
+                                            />
+                                            <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                                                {opt.label}
+                                            </span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </SectionGroup>
+                    );
+                })()}
 
             <SectionGroup title="Last Page Elements">
                 <p className="text-xs text-muted-foreground -mt-1">
@@ -1354,7 +1533,9 @@ export default function TemplateEditorPage() {
                                 <ArrowLeft className="size-4 mr-1" />
                                 Back
                             </Button>
-                            <span className="text-muted-foreground/40 select-none">|</span>
+                            <span className="text-muted-foreground/40 select-none">
+                                |
+                            </span>
                             <span className="text-sm font-semibold">
                                 {editId ? "Edit Template" : "New Template"}
                             </span>
@@ -1427,6 +1608,13 @@ export default function TemplateEditorPage() {
                                 pageNumber={1}
                                 totalPages={1}
                                 zoom={1}
+                                onHeaderResize={(h) =>
+                                    patch({ headerHeight: h })
+                                }
+                                onFooterResize={(h) =>
+                                    patch({ footerHeight: h })
+                                }
+                                resizeScale={previewScale}
                             />
                         </div>
                     </div>

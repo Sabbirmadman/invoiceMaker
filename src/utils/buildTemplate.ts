@@ -36,12 +36,50 @@ export const ALL_COMPANY_FIELDS: CompanyField[] = COMPANY_FIELD_OPTIONS.map(
     (o) => o.value,
 );
 
+export const INVOICE_DETAILS_FIELD_OPTIONS = [
+    { value: "number", label: "Invoice #" },
+    { value: "date", label: "Date" },
+    { value: "dueDate", label: "Due Date" },
+    { value: "terms", label: "Terms" },
+    { value: "poNumber", label: "PO Number" },
+    { value: "projectName", label: "Project" },
+    { value: "reference", label: "Reference" },
+    { value: "placeOfSupply", label: "Place of Supply" },
+] as const;
+
+export const ESTIMATE_DETAILS_FIELD_OPTIONS = [
+    { value: "number", label: "Estimate #" },
+    { value: "date", label: "Date" },
+    { value: "expiryDate", label: "Expiry Date" },
+    { value: "reference", label: "Reference" },
+    { value: "poNumber", label: "PO Number" },
+    { value: "projectName", label: "Project" },
+] as const;
+
+export const RECEIPT_DETAILS_FIELD_OPTIONS = [
+    { value: "number", label: "Receipt #" },
+    { value: "issueDate", label: "Issue Date" },
+    { value: "paymentDate", label: "Payment Date" },
+    { value: "paymentMethod", label: "Payment Method" },
+    { value: "transactionId", label: "Transaction ID" },
+    { value: "relatedInvoiceNumber", label: "Related Invoice #" },
+] as const;
+
+export function getDetailsFieldOptions(docType: DocumentType) {
+    if (docType === "estimate") return ESTIMATE_DETAILS_FIELD_OPTIONS;
+    if (docType === "receipt") return RECEIPT_DETAILS_FIELD_OPTIONS;
+    return INVOICE_DETAILS_FIELD_OPTIONS;
+}
+
 export interface ColumnConfig {
     width: string; // e.g. "50%"
     element: HeaderElementSlot | FooterElementSlot;
     align?: "left" | "center" | "right"; // horizontal alignment within the column
     textLabelText?: string; // only when element === 'textLabel'
     companyFields?: CompanyField[]; // only when element === 'companyDetails'
+    detailsFields?: string[]; // only when element === 'detailsBlock'
+    /** Number of internal columns to grid the element's fields into (default 1). */
+    contentCols?: number;
 }
 
 export interface WizardState {
@@ -78,6 +116,8 @@ export interface WizardState {
     showLogo: boolean; // logo in body (first-page)
     showCompanyDetails: boolean; // company details in body (first-page)
     showDivider: boolean; // divider line in body (before totals)
+    bodyCompanyFields?: CompanyField[]; // visible fields for body companyDetails element
+    bodyDetailsFields?: string[]; // visible fields for body detailsBlock element
     // Ordered list of first-page body element keys for reordering
     bodyFirstPageOrder: Array<
         "billTo" | "shipTo" | "details" | "logo" | "companyDetails"
@@ -166,13 +206,18 @@ function detailsElement(
     docType: DocumentType,
     colId: string,
     rowId: string,
+    fields?: string[],
+    accentColor?: string,
 ): TemplateElement {
+    const accentStyle = accentColor ? { accentColor } : {};
     if (docType === "invoice") {
         return {
             id: uid("el_inv_details"),
             type: "invoiceDetails",
             zIndex: 3,
             gridArea: { col: colId, row: rowId },
+            ...(fields ? { config: { fields } } : {}),
+            styles: accentStyle,
             bindings: {
                 number: "{{invoice.number}}",
                 date: "{{invoice.date}}",
@@ -188,6 +233,8 @@ function detailsElement(
             type: "estimateDetails",
             zIndex: 3,
             gridArea: { col: colId, row: rowId },
+            ...(fields ? { config: { fields } } : {}),
+            styles: accentStyle,
             bindings: {
                 number: "{{estimate.number}}",
                 date: "{{estimate.date}}",
@@ -201,6 +248,8 @@ function detailsElement(
         type: "receiptDetails",
         zIndex: 3,
         gridArea: { col: colId, row: rowId },
+        ...(fields ? { config: { fields } } : {}),
+        styles: accentStyle,
         bindings: {
             number: "{{receipt.number}}",
             issueDate: "{{receipt.issueDate}}",
@@ -220,6 +269,8 @@ function headerSlotElement(
     logoMaxHeight?: string,
     companyFields?: CompanyField[],
     align?: "left" | "center" | "right",
+    detailsFields?: string[],
+    accentColor?: string,
 ): TemplateElement | null {
     const alignStyle = align && align !== "left" ? { textAlign: align } : {};
     switch (slot) {
@@ -270,7 +321,13 @@ function headerSlotElement(
                 },
             };
         case "detailsBlock":
-            return detailsElement(docType, colId, rowId);
+            return detailsElement(
+                docType,
+                colId,
+                rowId,
+                detailsFields,
+                accentColor,
+            );
         case "empty":
             return null;
     }
@@ -356,8 +413,19 @@ export function buildTemplateFromWizard(
             state.logoMaxHeight,
             col.companyFields,
             col.align,
+            col.detailsFields,
+            state.accentColor,
         );
-        if (el) headerElements.push(el);
+        if (el) {
+            // Pass contentCols into the element config
+            if (col.contentCols && col.contentCols > 1) {
+                el.config = {
+                    ...(el.config ?? {}),
+                    contentCols: col.contentCols,
+                };
+            }
+            headerElements.push(el);
+        }
     });
 
     const header: Section = {
@@ -408,7 +476,12 @@ export function buildTemplateFromWizard(
             : null,
         details: state.showDetailsBlock
             ? {
-                  ...detailsElement(state.documentType, "col_body", "row_body"),
+                  ...detailsElement(
+                      state.documentType,
+                      "col_body",
+                      "row_body",
+                      state.bodyDetailsFields,
+                  ),
                   placement: "first-page" as const,
                   gridArea: undefined,
               }
@@ -434,7 +507,9 @@ export function buildTemplateFromWizard(
                   type: "companyDetails" as const,
                   placement: "first-page" as const,
                   zIndex: 3,
-                  config: { fields: ALL_COMPANY_FIELDS },
+                  config: {
+                      fields: state.bodyCompanyFields ?? ALL_COMPANY_FIELDS,
+                  },
                   bindings: {
                       name: "{{company.name}}",
                       address: "{{company.address}}",
@@ -645,7 +720,12 @@ export function wizardStateFromTemplate(tmpl: Template): WizardState {
             );
             if (!el) return { width, element: "empty" };
 
-            if (el.type === "logo") return { width, element: "logo" };
+            const contentCols = el.config?.contentCols as number | undefined;
+            const colsExtra =
+                contentCols && contentCols > 1 ? { contentCols } : {};
+
+            if (el.type === "logo")
+                return { width, element: "logo", ...colsExtra };
             if (el.type === "companyDetails") {
                 const fields =
                     (el.config?.fields as CompanyField[] | undefined) ??
@@ -654,6 +734,7 @@ export function wizardStateFromTemplate(tmpl: Template): WizardState {
                     width,
                     element: "companyDetails",
                     companyFields: fields,
+                    ...colsExtra,
                 };
             }
             if (el.type === "textLabel") {
@@ -661,10 +742,18 @@ export function wizardStateFromTemplate(tmpl: Template): WizardState {
                     width,
                     element: "textLabel",
                     textLabelText: (el.config?.text as string) ?? "INVOICE",
+                    ...colsExtra,
                 };
             }
-            if (DETAILS_TYPES.includes(el.type))
-                return { width, element: "detailsBlock" };
+            if (DETAILS_TYPES.includes(el.type)) {
+                const detailsFields = el.config?.fields as string[] | undefined;
+                return {
+                    width,
+                    element: "detailsBlock" as HeaderElementSlot,
+                    ...(detailsFields ? { detailsFields } : {}),
+                    ...colsExtra,
+                };
+            }
             return { width, element: "empty" };
         },
     );
@@ -702,6 +791,20 @@ export function wizardStateFromTemplate(tmpl: Template): WizardState {
         (e) => e.type === "companyDetails" && !e.gridArea,
     );
     const showDivider = bodyEls.some((e) => e.type === "divider");
+
+    const bodyCompanyEl = bodyEls.find(
+        (e) => e.type === "companyDetails" && !e.gridArea,
+    );
+    const bodyCompanyFields = bodyCompanyEl?.config?.fields as
+        | CompanyField[]
+        | undefined;
+
+    const bodyDetailsEl = bodyEls.find(
+        (e) => DETAILS_TYPES.includes(e.type) && !e.gridArea,
+    );
+    const bodyDetailsFields = bodyDetailsEl?.config?.fields as
+        | string[]
+        | undefined;
 
     // Reconstruct first-page element order from body elements
     const firstPageEls = bodyEls.filter(
@@ -797,6 +900,8 @@ export function wizardStateFromTemplate(tmpl: Template): WizardState {
         showLogo,
         showCompanyDetails,
         showDivider,
+        bodyCompanyFields,
+        bodyDetailsFields,
         bodyFirstPageOrder:
             bodyFirstPageOrder.length > 0
                 ? bodyFirstPageOrder

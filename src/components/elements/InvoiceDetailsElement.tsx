@@ -8,7 +8,8 @@ interface Props {
     meta: InvoiceMeta;
 }
 
-const LABEL_STYLE = "text-[10px] uppercase tracking-widest font-semibold opacity-60 leading-none mb-0.5";
+const LABEL_STYLE =
+    "text-[10px] uppercase tracking-widest font-semibold opacity-60 leading-none mb-0.5";
 const VALUE_STYLE = "font-medium text-sm leading-snug";
 
 interface FieldRowProps {
@@ -21,7 +22,15 @@ interface FieldRowProps {
     onDateChange?: (v: string) => void;
 }
 
-function FieldRow({ label, value, fillMode, onChange, placeholder, inputType = "text", onDateChange }: FieldRowProps) {
+function FieldRow({
+    label,
+    value,
+    fillMode,
+    onChange,
+    placeholder,
+    inputType = "text",
+    onDateChange,
+}: FieldRowProps) {
     return (
         <div className="py-1.5 border-b border-current/10 last:border-0">
             <div className={LABEL_STYLE}>{label}</div>
@@ -51,14 +60,35 @@ function FieldRow({ label, value, fillMode, onChange, placeholder, inputType = "
 export function InvoiceDetailsElement({ element, meta }: Props) {
     const { fillMode, onUpdateInvoiceMeta } = useFillMode();
 
-    const accentColor = element.styles?.accentColor ?? element.styles?.borderLeftColor ?? "#2563eb";
-    const textAlign = (element.styles?.textAlign ?? "left") as React.CSSProperties["textAlign"];
+    const f = (field: string) => {
+        const fields = element.config?.fields as string[] | undefined;
+        return !fields || fields.includes(field);
+    };
+
+    const accentColor =
+        element.styles?.accentColor ??
+        element.styles?.borderLeftColor ??
+        "var(--doc-accent, #2563eb)";
+    const textAlign = (element.styles?.textAlign ??
+        "left") as React.CSSProperties["textAlign"];
     const isRight = textAlign === "right";
+    const contentCols =
+        (element.config?.contentCols as number | undefined) ?? 1;
 
     const containerStyle: React.CSSProperties = {
         ...(element.styles as React.CSSProperties),
         textAlign,
     };
+
+    const fieldsStyle: React.CSSProperties =
+        contentCols > 1
+            ? {
+                  display: "grid",
+                  gridTemplateColumns: `repeat(${contentCols}, 1fr)`,
+                  gap: "0 12px",
+                  alignItems: "start",
+              }
+            : { display: "flex", flexDirection: "column", flex: 1 };
 
     return (
         <div className="flex flex-col h-full" style={containerStyle}>
@@ -81,33 +111,39 @@ export function InvoiceDetailsElement({ element, meta }: Props) {
             </div>
 
             {/* Fields */}
-            <div className="flex flex-col flex-1">
-                <FieldRow
-                    label="Invoice #"
-                    value={meta.number}
-                    fillMode={fillMode}
-                    onChange={(v) => onUpdateInvoiceMeta({ number: v })}
-                    placeholder="INV-001"
-                />
-                <FieldRow
-                    label="Date"
-                    value={meta.date}
-                    fillMode={fillMode}
-                    inputType="date"
-                    onDateChange={(v) => onUpdateInvoiceMeta({ date: v })}
-                    placeholder=""
-                />
-                {(fillMode || meta.dueDate) && (
+            <div style={fieldsStyle}>
+                {f("number") && (
+                    <FieldRow
+                        label="Invoice #"
+                        value={meta.number}
+                        fillMode={fillMode}
+                        onChange={(v) => onUpdateInvoiceMeta({ number: v })}
+                        placeholder="INV-001"
+                    />
+                )}
+                {f("date") && (
+                    <FieldRow
+                        label="Date"
+                        value={meta.date}
+                        fillMode={fillMode}
+                        inputType="date"
+                        onDateChange={(v) => onUpdateInvoiceMeta({ date: v })}
+                        placeholder=""
+                    />
+                )}
+                {f("dueDate") && (fillMode || meta.dueDate) && (
                     <FieldRow
                         label="Due Date"
                         value={meta.dueDate}
                         fillMode={fillMode}
                         inputType="date"
-                        onDateChange={(v) => onUpdateInvoiceMeta({ dueDate: v })}
+                        onDateChange={(v) =>
+                            onUpdateInvoiceMeta({ dueDate: v })
+                        }
                         placeholder=""
                     />
                 )}
-                {(fillMode || meta.terms) && (
+                {f("terms") && (fillMode || meta.terms) && (
                     <FieldRow
                         label="Terms"
                         value={meta.terms}
@@ -116,7 +152,7 @@ export function InvoiceDetailsElement({ element, meta }: Props) {
                         placeholder="e.g. Net 30"
                     />
                 )}
-                {(fillMode || meta.poNumber) && (
+                {f("poNumber") && (fillMode || meta.poNumber) && (
                     <FieldRow
                         label="PO Number"
                         value={meta.poNumber}
@@ -125,16 +161,18 @@ export function InvoiceDetailsElement({ element, meta }: Props) {
                         placeholder="PO#"
                     />
                 )}
-                {(fillMode || meta.projectName) && (
+                {f("projectName") && (fillMode || meta.projectName) && (
                     <FieldRow
                         label="Project"
                         value={meta.projectName}
                         fillMode={fillMode}
-                        onChange={(v) => onUpdateInvoiceMeta({ projectName: v })}
+                        onChange={(v) =>
+                            onUpdateInvoiceMeta({ projectName: v })
+                        }
                         placeholder="Project name"
                     />
                 )}
-                {(fillMode || meta.reference) && (
+                {f("reference") && (fillMode || meta.reference) && (
                     <FieldRow
                         label="Reference"
                         value={meta.reference}
@@ -143,12 +181,14 @@ export function InvoiceDetailsElement({ element, meta }: Props) {
                         placeholder="Ref #"
                     />
                 )}
-                {(fillMode || meta.placeOfSupply) && (
+                {f("placeOfSupply") && (fillMode || meta.placeOfSupply) && (
                     <FieldRow
                         label="Place of Supply"
                         value={meta.placeOfSupply}
                         fillMode={fillMode}
-                        onChange={(v) => onUpdateInvoiceMeta({ placeOfSupply: v })}
+                        onChange={(v) =>
+                            onUpdateInvoiceMeta({ placeOfSupply: v })
+                        }
                         placeholder="State / Country"
                     />
                 )}

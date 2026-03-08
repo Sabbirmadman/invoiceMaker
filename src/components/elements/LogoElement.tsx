@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Upload, X } from "lucide-react";
+import { Upload, X, ImageIcon } from "lucide-react";
 import type { TemplateElement } from "@/types/template";
 import type { CompanyData } from "@/types/document";
 import { useFillMode } from "@/components/fill-mode/FillModeContext";
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function LogoElement({ element, company }: Props) {
-    const { fillMode, onUpdateCompany } = useFillMode();
+    const { fillMode, onUpdateCompany, docId } = useFillMode();
     const [isDragOver, setIsDragOver] = useState(false);
 
     function readFile(file: File) {
@@ -29,21 +29,30 @@ export function LogoElement({ element, company }: Props) {
 
     if (fillMode) {
         if (company.logoUrl) {
-            const fitMode = (element.styles?.objectFit ?? 'contain') as React.CSSProperties['objectFit']
-            const isFill = fitMode === 'fill' || element.styles?.width === '100%'
+            const fitMode = (element.styles?.objectFit ??
+                "contain") as React.CSSProperties["objectFit"];
+            const isFill =
+                fitMode === "fill" || element.styles?.width === "100%";
             return (
-                <div className={`relative group ${isFill ? 'w-full h-full' : 'inline-block'}`}>
+                <div
+                    className={`relative group ${isFill ? "w-full h-full" : "inline-block"}`}
+                >
                     <img
                         src={company.logoUrl}
                         alt="Company logo"
-                        style={isFill ? {
-                            width: '100%',
-                            height: '100%',
-                            objectFit: fitMode,
-                        } : {
-                            maxHeight: element.styles?.maxHeight ?? "80px",
-                            objectFit: fitMode,
-                        }}
+                        style={
+                            isFill
+                                ? {
+                                      width: "100%",
+                                      height: "100%",
+                                      objectFit: fitMode,
+                                  }
+                                : {
+                                      maxHeight:
+                                          element.styles?.maxHeight ?? "80px",
+                                      objectFit: fitMode,
+                                  }
+                        }
                     />
                     <button
                         onClick={() => onUpdateCompany({ logoUrl: "" })}
@@ -72,7 +81,13 @@ export function LogoElement({ element, company }: Props) {
                         ? "border-blue-400 bg-blue-50"
                         : "border-muted-foreground/30 hover:border-blue-400 hover:bg-blue-50/50"
                 }`}
-                style={{ height: element.styles?.height ?? element.styles?.maxHeight ?? "80px", width: element.styles?.width }}
+                style={{
+                    height:
+                        element.styles?.height ??
+                        element.styles?.maxHeight ??
+                        "80px",
+                    width: element.styles?.width,
+                }}
             >
                 {/* Invisible file input overlays the entire zone so click lands directly on it */}
                 <input
@@ -90,18 +105,37 @@ export function LogoElement({ element, company }: Props) {
         );
     }
 
+    // Editor preview (non-fill-mode): show gray placeholder so the logo slot is visible
+    if (!company.logoUrl && docId === "preview") {
+        return (
+            <div
+                className="flex flex-col items-center justify-center gap-1 rounded bg-muted/60 text-muted-foreground/50"
+                style={{
+                    height:
+                        element.styles?.height ??
+                        element.styles?.maxHeight ??
+                        "80px",
+                    width: element.styles?.width,
+                }}
+            >
+                <ImageIcon className="size-6" />
+            </div>
+        );
+    }
+
     if (!company.logoUrl) return null;
 
-    const fitMode = (element.styles?.objectFit ?? 'contain') as React.CSSProperties['objectFit']
-    const isFill = fitMode === 'fill' || element.styles?.width === '100%'
+    const fitMode = (element.styles?.objectFit ??
+        "contain") as React.CSSProperties["objectFit"];
+    const isFill = fitMode === "fill" || element.styles?.width === "100%";
 
     return isFill ? (
         <img
             src={company.logoUrl}
             alt="Company logo"
             style={{
-                width: '100%',
-                height: '100%',
+                width: "100%",
+                height: "100%",
                 objectFit: fitMode,
             }}
         />
