@@ -17,6 +17,7 @@ import { PageNumberElement } from '@/components/elements/PageNumberElement'
 
 interface Props {
   doc: StoredDocument
+  fillMode?: boolean
 }
 
 /**
@@ -36,7 +37,7 @@ interface Props {
  *   data-row-index         — on each item row (added by ItemListElement itself)
  *   data-post-el-index     — on each post-table element wrapper
  */
-export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc }, ref) => {
+export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc, fillMode = false }, ref) => {
   const { data, templateSnapshot } = doc
   const pageWidth = templateSnapshot.pageSize === 'A4' ? 794 : 816
   const totals = calculateTotals(data.items, data.totalsConfig)
@@ -49,9 +50,14 @@ export const MeasureContainer = forwardRef<HTMLDivElement, Props>(({ doc }, ref)
   )
 
   // last-page elements (TotalsBlock, Notes, Terms, etc.)
-  const postTableElements = sortedBody.filter(
-    (el) => el.type !== 'watermark' && (el.placement ?? 'last-page') === 'last-page',
-  )
+  // In fill mode always include all elements; in preview/PDF skip empty notes/terms
+  const postTableElements = sortedBody.filter((el) => {
+    if (el.type === 'watermark') return false
+    if ((el.placement ?? 'last-page') !== 'last-page') return false
+    if (!fillMode && el.type === 'notes' && !data.notes) return false
+    if (!fillMode && el.type === 'termsConditions' && !data.terms) return false
+    return true
+  })
 
   // all-pages element (itemList)
   const itemListEl = sortedBody.find((el) => el.placement === 'all-pages')

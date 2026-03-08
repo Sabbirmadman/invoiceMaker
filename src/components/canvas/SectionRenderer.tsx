@@ -282,13 +282,18 @@ export function BodySectionRenderer({
     onGridRowColsResize,
     resizeScale = 1,
 }: BodySectionRendererProps) {
-    const { showBounds } = useFillMode();
+    const { showBounds, fillMode } = useFillMode();
     const sorted = [...section.elements].sort((a, b) => a.zIndex - b.zIndex);
 
     // Build the ordered list of post-table elements (last-page placement)
-    const postTableElements = sorted.filter(
-        (el) => el.type !== "watermark" && !isPreTable(el),
-    );
+    // In fill mode always show all elements so users can enter data.
+    // In preview/PDF mode skip empty notes/terms so they don't create extra pages.
+    const postTableElements = sorted.filter((el) => {
+        if (el.type === "watermark" || isPreTable(el)) return false;
+        if (!fillMode && el.type === "notes" && !doc.data.notes) return false;
+        if (!fillMode && el.type === "termsConditions" && !doc.data.terms) return false;
+        return true;
+    });
     // Slice to only the elements assigned to this page
     const visiblePostElements =
         postTableEndIndex !== undefined

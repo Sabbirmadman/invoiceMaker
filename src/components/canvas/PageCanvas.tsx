@@ -3,6 +3,7 @@ import type { StoredDocument } from '@/types/document'
 import { usePagination } from '@/hooks/usePagination'
 import { CanvasPage } from './CanvasPage'
 import { MeasureContainer } from './MeasureContainer'
+import { useFillMode } from '@/components/fill-mode/FillModeContext'
 
 interface Props {
   doc: StoredDocument
@@ -10,15 +11,16 @@ interface Props {
 }
 
 export function PageCanvas({ doc, zoom = 1 }: Props) {
+  const { fillMode } = useFillMode()
   const totals = calculateTotals(doc.data.items, doc.data.totalsConfig)
-  const { pages, totalPages, measureRef, ready } = usePagination(doc)
+  const { pages, totalPages, measureRef, ready } = usePagination(doc, fillMode)
 
   const pagesToRender = ready && pages.length > 0 ? pages : null
 
   return (
     <>
       {/* Hidden measurement container — off-screen, no zoom */}
-      <MeasureContainer ref={measureRef} doc={doc} />
+      <MeasureContainer ref={measureRef} doc={doc} fillMode={fillMode} />
 
       <div className="flex flex-col items-center gap-6 bg-muted/30 p-6">
         {pagesToRender ? (

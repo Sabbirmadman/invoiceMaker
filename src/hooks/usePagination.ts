@@ -47,7 +47,7 @@ const POST_TABLE_GAP = 16         // gap-4 between post-table elements
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export function usePagination(doc: StoredDocument): PaginationResult {
+export function usePagination(doc: StoredDocument, fillMode = false): PaginationResult {
   const { templateSnapshot, data } = doc
   const { pageSize, header, footer } = templateSnapshot
   const dims = PAGE_DIMENSIONS[pageSize]
@@ -65,7 +65,12 @@ export function usePagination(doc: StoredDocument): PaginationResult {
     .filter((el) => el.type !== 'watermark' && (el.placement ?? 'last-page') === 'first-page')
     .map((el) => el.id)
   const postTableElIds = sortedBody
-    .filter((el) => el.type !== 'watermark' && (el.placement ?? 'last-page') === 'last-page')
+    .filter((el) => {
+      if (el.type === 'watermark' || (el.placement ?? 'last-page') !== 'last-page') return false
+      if (!fillMode && el.type === 'notes' && !data.notes) return false
+      if (!fillMode && el.type === 'termsConditions' && !data.terms) return false
+      return true
+    })
     .map((el) => el.id)
   const itemListId = itemListEl?.id ?? 'itemList'
 
