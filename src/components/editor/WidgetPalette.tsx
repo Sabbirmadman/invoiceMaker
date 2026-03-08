@@ -12,7 +12,7 @@ import React, { useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { WidgetPreview } from "./WidgetPreview";
 import {
-    LayoutGrid, Box, Minus,
+    LayoutGrid, Minus,
     Image, Building2, User, Truck, FileText, Table2, Calculator,
     StickyNote, ScrollText, Hash, Droplets,
     Type,
@@ -22,7 +22,7 @@ import { useDrag } from "./DragContext";
 
 // ── Item definitions ──────────────────────────────────────────────────────────
 
-export type DragType = ElementType | "container" | "bodyGrid";
+export type DragType = ElementType | "bodyGrid";
 
 interface PaletteItem {
     type: DragType;
@@ -39,12 +39,6 @@ const LAYOUT_ITEMS: PaletteItem[] = [
         label: "Grid",
         icon: <LayoutGrid size={15} />,
         description: "Add a configurable CSS grid section to the body",
-    },
-    {
-        type: "container",
-        label: "Container",
-        icon: <Box size={15} />,
-        description: "Styled wrapper — drag inside a grid cell to group widgets",
     },
     {
         type: "divider",
@@ -109,8 +103,7 @@ export function WidgetPalette({ onAddBodyGrid }: Props) {
         e.dataTransfer.effectAllowed = "copy";
         e.dataTransfer.setData("text/plain", JSON.stringify({ widgetType: item.type }));
         if (item.type !== "bodyGrid") {
-            // "container" is also a valid palette drag type now
-            startDragFromPalette(item.type as ElementType | "container");
+            startDragFromPalette(item.type as ElementType);
         }
     }
 

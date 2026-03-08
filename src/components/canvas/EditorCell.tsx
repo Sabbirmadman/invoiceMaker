@@ -23,8 +23,6 @@ interface Props {
     editMode?: boolean;
     /** Called when a drop lands on this cell */
     onDrop?: (cellId: string, dropIndex: number) => void;
-    /** Called when a drop lands inside a container within this cell */
-    onDropIntoContainer?: (containerId: string, index: number) => void;
 }
 
 export function EditorCell({
@@ -35,7 +33,6 @@ export function EditorCell({
     totalPages = 1,
     editMode = false,
     onDrop,
-    onDropIntoContainer,
 }: Props) {
     const { isSelected, selectNode } = useEditorSelection();
     const { setDropTarget, dropTargetId, endDrag, draggingWidgetType, draggingNodeId } = useDrag();
@@ -141,7 +138,6 @@ export function EditorCell({
                         currentPage={currentPage}
                         totalPages={totalPages}
                         editMode={editMode}
-                        onDropIntoContainer={onDropIntoContainer}
                     />
                 ))}
 

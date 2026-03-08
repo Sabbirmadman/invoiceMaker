@@ -24,33 +24,7 @@ export type { ElementType, Theme };
  */
 export type BodyPlacement = "first-page" | "all-pages" | "last-page";
 
-// ── Container styles ─────────────────────────────────────────────────────────
-
-export interface ContainerStyles {
-    backgroundColor?: string;
-    backgroundImage?: string;          // full CSS value e.g. "url('...')"
-    backgroundSize?: "cover" | "contain" | "repeat";
-    borderRadius?: string;             // e.g. "8px"
-    border?: string;                   // e.g. "1px solid #ccc"
-    padding?: string;                  // e.g. "16px" or "8px 16px"
-    margin?: string;
-    display?: "flex" | "block";
-    flexDirection?: "row" | "column";
-    gap?: string;                      // e.g. "8px"
-    alignItems?: "flex-start" | "center" | "flex-end" | "stretch";
-    justifyContent?: "flex-start" | "center" | "flex-end" | "space-between" | "space-around";
-    minHeight?: string;
-    width?: string;
-}
-
 // ── Node tree ────────────────────────────────────────────────────────────────
-
-export interface TemplateContainer {
-    id: string;
-    kind: "container";
-    styles: ContainerStyles;
-    children: TemplateNode[];
-}
 
 export interface TemplateWidget {
     id: string;
@@ -63,7 +37,7 @@ export interface TemplateWidget {
     bindings?: Record<string, string>;
 }
 
-export type TemplateNode = TemplateContainer | TemplateWidget;
+export type TemplateNode = TemplateWidget;
 
 // ── Grid cell ────────────────────────────────────────────────────────────────
 
@@ -167,15 +141,10 @@ export function makeWidget(
     placement?: BodyPlacement,
     config?: Record<string, unknown>,
 ): TemplateWidget {
-    return { id, kind: "widget", type, placement, config };
-}
-
-export function makeContainer(
-    id: string,
-    styles: ContainerStyles = {},
-    children: TemplateNode[] = [],
-): TemplateContainer {
-    return { id, kind: "container", styles, children };
+    // Give textLabel a default text so it renders with visible content
+    const defaultConfig: Record<string, unknown> =
+        type === "textLabel" ? { text: "Text Label" } : {};
+    return { id, kind: "widget", type, placement, config: config ?? defaultConfig };
 }
 
 /** Create a blank SectionGridV2 */
@@ -205,13 +174,10 @@ export function makeBodySection(firstGridId = "body_grid_0"): BodySectionV2 {
 
 // ── Walk helpers ─────────────────────────────────────────────────────────────
 
-/** Walk a TemplateNode tree and call visitor for every node */
+/** Walk a TemplateNode list and call visitor for every node */
 export function walkNodes(nodes: TemplateNode[], visitor: (node: TemplateNode) => void): void {
     for (const node of nodes) {
         visitor(node);
-        if (node.kind === "container") {
-            walkNodes(node.children, visitor);
-        }
     }
 }
 
@@ -255,16 +221,9 @@ export function findCellContaining(section: SectionGridV2, nodeId: string): Temp
     return null;
 }
 
-/** Remove a node by id from a TemplateNode list (recursive) */
+/** Remove a node by id from a TemplateNode list */
 export function removeNodeById(nodes: TemplateNode[], nodeId: string): TemplateNode[] {
-    return nodes
-        .filter((n) => n.id !== nodeId)
-        .map((n) => {
-            if (n.kind === "container") {
-                return { ...n, children: removeNodeById(n.children, nodeId) };
-            }
-            return n;
-        });
+    return nodes.filter((n) => n.id !== nodeId);
 }
 
 /** Insert a node at a given index into a list */

@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import type { ElementType } from "@/types/template";
 
-/** What's being dragged from the palette — a widget type or "container" */
-export type PaletteDragType = ElementType | "container";
+/** What's being dragged from the palette — a widget type */
+export type PaletteDragType = ElementType;
 
 interface DragState {
     /** ID of an existing node being moved (null if dragging from palette) */
     draggingNodeId: string | null;
-    /** Type being dragged from palette — ElementType for widgets, "container" for containers, null if moving existing */
+    /** Type being dragged from palette — null if moving existing node */
     draggingWidgetType: PaletteDragType | null;
     /** ID of cell or container being hovered as a drop target */
     dropTargetId: string | null;

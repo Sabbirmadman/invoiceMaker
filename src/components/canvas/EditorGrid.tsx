@@ -25,8 +25,6 @@ interface Props {
     editMode?: boolean;
     /** Called when a node is dropped into a cell */
     onDropIntoCell?: (cellId: string, dropIndex: number) => void;
-    /** Called when a node is dropped into a container inside a cell */
-    onDropIntoContainer?: (containerId: string, index: number) => void;
     /** Called when the settings gear is clicked (open grid config panel) */
     onSettingsClick?: (sectionId: string) => void;
 }
@@ -40,7 +38,6 @@ export function EditorGrid({
     totalPages = 1,
     editMode = false,
     onDropIntoCell,
-    onDropIntoContainer,
     onSettingsClick,
 }: Props) {
     const { selectNode } = useEditorSelection();
@@ -154,7 +151,6 @@ export function EditorGrid({
                         totalPages={totalPages}
                         editMode={editMode}
                         onDrop={onDropIntoCell}
-                        onDropIntoContainer={onDropIntoContainer}
                     />
                 ))}
 

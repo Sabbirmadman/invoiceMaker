@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback } from "react";
 
-export type SelectionNodeType = "section" | "cell" | "container" | "widget" | null;
+export type SelectionNodeType = "section" | "cell" | "widget" | null;
 
 interface EditorSelectionValue {
     selectedId: string | null;

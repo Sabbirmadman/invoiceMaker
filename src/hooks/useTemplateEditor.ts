@@ -16,13 +16,10 @@ import type {
     TemplateGridCell,
     TemplateNode,
     TemplateWidget,
-    TemplateContainer,
     GridConfig,
-    ContainerStyles,
 } from "@/types/templateV2";
 import {
     makeWidget,
-    makeContainer,
     makeCell,
     removeNodeById,
     insertNode,
@@ -51,12 +48,10 @@ export interface UseTemplateEditorReturn {
     moveBodyGrid: (gridId: string, direction: "up" | "down") => void;
     // Cell operations
     addWidget: (target: SectionTarget, cellId: string, widgetType: ElementType, dropIndex?: number) => void;
-    addContainer: (target: SectionTarget, cellId: string, dropIndex?: number) => void;
     // Node operations
     moveNode: (nodeId: string, targetCellId: string, targetGridId?: string) => void;
     deleteNode: (nodeId: string) => void;
     updateWidgetConfig: (nodeId: string, patch: Partial<Pick<TemplateWidget, "config" | "styles" | "bindings" | "placement">>) => void;
-    updateContainerStyles: (nodeId: string, styles: Partial<ContainerStyles>) => void;
     // Section/grid background
     updateGridBackground: (target: SectionTarget, bg: SectionGridV2["background"]) => void;
     updateSectionBackground: (target: SectionTarget, bg: SectionGridV2["background"]) => void;
@@ -162,26 +157,12 @@ function removeNodeFromAll(t: TemplateV2, nodeId: string): TemplateV2 {
     };
 }
 
-function patchNodeById(
-    nodes: TemplateNode[],
-    nodeId: string,
-    patcher: (n: TemplateNode) => TemplateNode,
-): TemplateNode[] {
-    return nodes.map((n) => {
-        if (n.id === nodeId) return patcher(n);
-        if (n.kind === "container") {
-            return { ...n, children: patchNodeById(n.children, nodeId, patcher) };
-        }
-        return n;
-    });
-}
-
 function patchNodeInSection(section: SectionGridV2, nodeId: string, patcher: (n: TemplateNode) => TemplateNode): SectionGridV2 {
     return {
         ...section,
         cells: section.cells.map((cell) => ({
             ...cell,
-            children: patchNodeById(cell.children, nodeId, patcher),
+            children: cell.children.map((n) => (n.id === nodeId ? patcher(n) : n)),
         })),
     };
 }
@@ -306,49 +287,6 @@ export function useTemplateEditor(initial: TemplateV2): UseTemplateEditorReturn 
         push(applyToSection(template, resolvedTarget, upsertCell(section, { ...cell, children: insertNode(cell.children, widget, idx) })));
     }, [template, push]);
 
-    // ── Add container ────────────────────────────────────────────────────────
-
-    const addContainer = useCallback((
-        target: SectionTarget,
-        cellOrContainerId: string,
-        dropIndex?: number,
-    ) => {
-        const container = makeContainer(uid("c"), {}, []);
-
-        // If dropped INTO an existing container, patch that container's children
-        const existingContainerLocation = locateNode(template, cellOrContainerId);
-        if (existingContainerLocation) {
-            // cellOrContainerId is a container node id — add inside it
-            const parentContainer = existingContainerLocation.cell.children.find(
-                (n) => n.id === cellOrContainerId && n.kind === "container",
-            );
-            if (parentContainer && parentContainer.kind === "container") {
-                const idx = dropIndex ?? parentContainer.children.length;
-                push(patchNodeInAll(template, cellOrContainerId, (n) =>
-                    n.kind === "container"
-                        ? { ...n, children: insertNode(n.children, container, idx) }
-                        : n,
-                ));
-                return;
-            }
-        }
-
-        const resolvedTarget = resolveTargetFromCellId(template, cellOrContainerId, target);
-        const section = resolveSection(template, resolvedTarget);
-        if (!section) return;
-
-        const empty = parseEmptyCellId(cellOrContainerId);
-        if (empty) {
-            const newCell = makeCell(uid("cell"), empty.col, empty.row, 1, 1, [container]);
-            push(applyToSection(template, resolvedTarget, upsertCell(section, newCell)));
-            return;
-        }
-
-        const cell = findCell(section, cellOrContainerId);
-        if (!cell) return;
-        const idx = dropIndex ?? cell.children.length;
-        push(applyToSection(template, resolvedTarget, upsertCell(section, { ...cell, children: insertNode(cell.children, container, idx) })));
-    }, [template, push]);
 
     // ── Move node ────────────────────────────────────────────────────────────
 
@@ -397,13 +335,6 @@ export function useTemplateEditor(initial: TemplateV2): UseTemplateEditorReturn 
         ));
     }, [template, push]);
 
-    // ── Update container styles ──────────────────────────────────────────────
-
-    const updateContainerStyles = useCallback((nodeId: string, styles: Partial<ContainerStyles>) => {
-        push(patchNodeInAll(template, nodeId, (n) =>
-            n.kind === "container" ? { ...n, styles: { ...n.styles, ...styles } } : n,
-        ));
-    }, [template, push]);
 
     // ── Grid/section background ──────────────────────────────────────────────
 
@@ -438,11 +369,9 @@ export function useTemplateEditor(initial: TemplateV2): UseTemplateEditorReturn 
         removeBodyGrid,
         moveBodyGrid,
         addWidget,
-        addContainer,
         moveNode,
         deleteNode,
         updateWidgetConfig,
-        updateContainerStyles,
         updateGridBackground,
         updateSectionBackground: updateGridBackground,  // alias used by TemplateEditorPageV2
         updateSectionHeight,

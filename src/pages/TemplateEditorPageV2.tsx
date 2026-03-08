@@ -58,7 +58,9 @@ function makeDummyDoc(template: TemplateV2): StoredDocument {
             company: {
                 name: "Your Company",
                 address: "123 Main Street",
-                cityStateZip: "New York, NY 10001",
+                city: "New York",
+                state: "NY",
+                zip: "10001",
                 country: "USA",
                 phone: "+1 (555) 000-0000",
                 email: "hello@company.com",
@@ -70,10 +72,14 @@ function makeDummyDoc(template: TemplateV2): StoredDocument {
                 name: "Client Name",
                 company: "Client Company",
                 address: "456 Client Ave",
-                cityStateZip: "Los Angeles, CA 90001",
+                city: "Los Angeles",
+                state: "CA",
+                zip: "90001",
                 country: "USA",
                 phone: "+1 (555) 111-1111",
                 email: "client@example.com",
+                shippingAddress: "456 Client Ave\nLos Angeles, CA 90001",
+                taxId: "",
             },
             meta: {
                 type: template.documentType as "invoice",
@@ -161,31 +167,10 @@ function EditorInner({
     }
 
     function handleDropIntoCell(cellId: string, dropIndex: number) {
-        if (draggingWidgetType === "container") {
-            editor.addContainer(resolveSection(cellId), cellId, dropIndex);
-        } else if (draggingWidgetType) {
+        if (draggingWidgetType) {
             editor.addWidget(resolveSection(cellId), cellId, draggingWidgetType, dropIndex);
         } else if (draggingNodeId) {
             editor.moveNode(draggingNodeId, cellId, dropIndex);
-        }
-        endDrag();
-    }
-
-    function handleDropIntoContainer(containerId: string, index: number) {
-        if (draggingWidgetType === "container") {
-            // Nested containers: add a container inside another container
-            // Use focused section as fallback target — the hook resolves by containerId
-            const target: SectionTarget = focusedSection === "header" ? "header"
-                : focusedSection === "footer" ? "footer"
-                : { bodyGridId: focusedSection };
-            editor.addContainer(target, containerId, index);
-        } else if (draggingWidgetType) {
-            const target: SectionTarget = focusedSection === "header" ? "header"
-                : focusedSection === "footer" ? "footer"
-                : { bodyGridId: focusedSection };
-            editor.addWidget(target, containerId, draggingWidgetType, index);
-        } else if (draggingNodeId) {
-            editor.moveNode(draggingNodeId, containerId, index);
         }
         endDrag();
     }
@@ -320,7 +305,7 @@ function EditorInner({
                                         totals={totals}
                                         editMode={!previewMode}
                                         onDropIntoCell={handleDropIntoCell}
-                                        onDropIntoContainer={handleDropIntoContainer}
+
                                         onSettingsClick={() => setFocusedSection("header")}
                                     />
                                 </div>
@@ -392,7 +377,7 @@ function EditorInner({
                                             totals={totals}
                                             editMode={!previewMode}
                                             onDropIntoCell={handleDropIntoCell}
-                                            onDropIntoContainer={handleDropIntoContainer}
+    
                                             onSettingsClick={() => setFocusedSection(grid.id)}
                                         />
                                     </div>
@@ -439,7 +424,7 @@ function EditorInner({
                                         totals={totals}
                                         editMode={!previewMode}
                                         onDropIntoCell={handleDropIntoCell}
-                                        onDropIntoContainer={handleDropIntoContainer}
+
                                         onSettingsClick={() => setFocusedSection("footer")}
                                     />
                                 </div>
@@ -461,13 +446,11 @@ function EditorInner({
                             onUpdateGridConfig={editor.updateGridConfig}
                             onUpdateSectionHeight={editor.updateSectionHeight}
                             onUpdateSectionBg={editor.updateSectionBackground}
-                            onUpdateContainerStyles={editor.updateContainerStyles}
                             onUpdateWidgetPlacement={(nodeId, p) =>
                                 editor.updateWidgetConfig(nodeId, { placement: p })
                             }
                             onDeleteNode={editor.deleteNode}
                             onAddWidget={editor.addWidget}
-                            onAddContainer={editor.addContainer}
                         />
                     )}
                 </div>
