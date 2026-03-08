@@ -64,6 +64,9 @@ interface SectionRendererProps {
     currentPage: number;
     totalPages: number;
     sectionType?: SectionType;
+    /** Editor-only: called with new percentage widths when user drags a column divider */
+    onColsResize?: (widths: string[]) => void;
+    resizeScale?: number;
 }
 
 export function SectionRenderer({
@@ -73,12 +76,82 @@ export function SectionRenderer({
     currentPage,
     totalPages,
     sectionType = "header",
+    onColsResize,
+    resizeScale = 1,
 }: SectionRendererProps) {
     const { showBounds } = useFillMode();
     const sorted = [...section.elements].sort((a, b) => a.zIndex - b.zIndex);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const colDragRef = useRef<{
+        startX: number;
+        leftPct: number;
+        totalPct: number;
+        colIdx: number;
+    } | null>(null);
+
+    // Cumulative column boundary positions (percentage) for drag handles
+    const colBoundaries: Array<{ pct: number; colIdx: number }> = [];
+    if (onColsResize && section.grid.columns.length > 1) {
+        let cum = 0;
+        for (let i = 0; i < section.grid.columns.length - 1; i++) {
+            const w = parseFloat(section.grid.columns[i].width);
+            if (isNaN(w)) break;
+            cum += w;
+            colBoundaries.push({ pct: cum, colIdx: i });
+        }
+    }
+
+    function startColDrag(e: React.MouseEvent, colIdx: number) {
+        e.preventDefault();
+        e.stopPropagation();
+        const container = containerRef.current;
+        if (!container || !onColsResize) return;
+        const containerW = container.offsetWidth;
+        const leftPct = parseFloat(section.grid.columns[colIdx].width);
+        const rightPct = parseFloat(section.grid.columns[colIdx + 1].width);
+        if (isNaN(leftPct) || isNaN(rightPct)) return;
+        colDragRef.current = {
+            startX: e.clientX,
+            leftPct,
+            totalPct: leftPct + rightPct,
+            colIdx,
+        };
+
+        function onMove(ev: MouseEvent) {
+            if (!colDragRef.current) return;
+            const {
+                startX,
+                leftPct: origLeft,
+                totalPct,
+                colIdx: ci,
+            } = colDragRef.current;
+            const deltaCanvas = (ev.clientX - startX) / resizeScale;
+            const deltaPct = (deltaCanvas / containerW) * 100;
+            const newLeft = Math.max(
+                10,
+                Math.min(totalPct - 10, origLeft + deltaPct),
+            );
+            const newRight = totalPct - newLeft;
+            const newWidths = section.grid.columns.map((col, i) => {
+                if (i === ci) return `${newLeft.toFixed(1)}%`;
+                if (i === ci + 1) return `${newRight.toFixed(1)}%`;
+                return col.width;
+            });
+            onColsResize!(newWidths);
+        }
+
+        function onUp() {
+            colDragRef.current = null;
+            document.removeEventListener("mousemove", onMove);
+            document.removeEventListener("mouseup", onUp);
+        }
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+    }
 
     return (
         <div
+            ref={containerRef}
             className="relative"
             style={{ height: section.height, width: "100%" }}
         >
@@ -140,6 +213,28 @@ export function SectionRenderer({
                     );
                 })}
             </GridLayout>
+
+            {/* Column resize handles — hover-only vertical lines between columns */}
+            {colBoundaries.map((boundary) => (
+                <div
+                    key={boundary.colIdx}
+                    style={{
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        left: `${boundary.pct}%`,
+                        width: 10,
+                        marginLeft: -5,
+                        zIndex: 60,
+                        cursor: "col-resize",
+                    }}
+                    className="group/colhandle flex items-center justify-center select-none"
+                    onMouseDown={(e) => startColDrag(e, boundary.colIdx)}
+                    title="Drag to resize column"
+                >
+                    <div className="absolute inset-y-0 w-0.5 bg-blue-400 opacity-25 group-hover/colhandle:opacity-75 transition-opacity" />
+                </div>
+            ))}
         </div>
     );
 }
@@ -158,6 +253,9 @@ interface BodySectionRendererProps {
     allItems?: LineItem[];
     postTableStartIndex?: number; // first post-table element to render on this page
     postTableEndIndex?: number; // exclusive end; undefined = render all
+    /** Editor-only: called when user drags a column divider inside a body grid row */
+    onGridRowColsResize?: (rowId: string, widths: string[]) => void;
+    resizeScale?: number;
 }
 
 // Placement helpers — use the element's explicit placement field.
@@ -181,6 +279,8 @@ export function BodySectionRenderer({
     allItems,
     postTableStartIndex = 0,
     postTableEndIndex,
+    onGridRowColsResize,
+    resizeScale = 1,
 }: BodySectionRendererProps) {
     const { showBounds } = useFillMode();
     const sorted = [...section.elements].sort((a, b) => a.zIndex - b.zIndex);
@@ -195,6 +295,44 @@ export function BodySectionRenderer({
             ? postTableElements.slice(postTableStartIndex, postTableEndIndex)
             : postTableElements.slice(postTableStartIndex);
 
+    // Build ordered render groups for pre-table elements, grouping by gridRowId
+    type RenderGroup =
+        | { kind: "single"; el: TemplateElement }
+        | { kind: "grid"; rowId: string; elements: TemplateElement[] };
+
+    const seenGridIds = new Set<string>();
+    const preTableGroups: RenderGroup[] = [];
+
+    for (const el of sorted) {
+        if (el.type === "watermark") continue;
+        if (!isPreTable(el)) continue;
+        if ((el.placement ?? "last-page") === "first-page" && !isFirstPage)
+            continue;
+        if (
+            el.placement === "all-pages" &&
+            doc.data.items.length === 0 &&
+            !isFirstPage
+        )
+            continue;
+
+        if (el.gridRowId) {
+            if (!seenGridIds.has(el.gridRowId)) {
+                seenGridIds.add(el.gridRowId);
+                // Collect all elements in this grid row in sorted order
+                const rowEls = sorted.filter(
+                    (e) => e.gridRowId === el.gridRowId,
+                );
+                preTableGroups.push({
+                    kind: "grid",
+                    rowId: el.gridRowId,
+                    elements: rowEls,
+                });
+            }
+        } else {
+            preTableGroups.push({ kind: "single", el });
+        }
+    }
+
     return (
         <div className="relative flex flex-col p-4 overflow-hidden">
             {/* Watermarks — absolute-positioned, render on every page */}
@@ -206,21 +344,28 @@ export function BodySectionRenderer({
 
             {/* Pre-table group: first-page and all-pages elements */}
             <div className="flex flex-col gap-4">
-                {sorted.map((el) => {
-                    if (el.type === "watermark") return null;
-                    if (!isPreTable(el)) return null;
-                    // first-page elements only on page 1; all-pages (itemList) allowed through
-                    if (
-                        (el.placement ?? "last-page") === "first-page" &&
-                        !isFirstPage
-                    )
-                        return null;
-                    if (
-                        el.placement === "all-pages" &&
-                        doc.data.items.length === 0 &&
-                        !isFirstPage
-                    )
-                        return null;
+                {preTableGroups.map((group) => {
+                    if (group.kind === "grid") {
+                        return (
+                            <BodyGridRow
+                                key={group.rowId}
+                                rowId={group.rowId}
+                                elements={group.elements}
+                                doc={doc}
+                                totals={totals}
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                showColumnHeader={showColumnHeader}
+                                itemOffset={itemOffset}
+                                isLastPage={isLastPage}
+                                allItems={allItems}
+                                showBounds={showBounds}
+                                onColsResize={onGridRowColsResize}
+                                resizeScale={resizeScale}
+                            />
+                        );
+                    }
+                    const el = group.el;
                     return (
                         <BoundedCell
                             key={el.id}
@@ -269,6 +414,164 @@ export function BodySectionRenderer({
                     ))}
                 </div>
             )}
+        </div>
+    );
+}
+
+// ── Body grid row with drag-to-resize column handles ─────────────────
+
+function BodyGridRow({
+    rowId,
+    elements,
+    doc,
+    totals,
+    currentPage,
+    totalPages,
+    showColumnHeader,
+    itemOffset,
+    isLastPage,
+    allItems,
+    showBounds,
+    onColsResize,
+    resizeScale = 1,
+}: {
+    rowId: string;
+    elements: TemplateElement[];
+    doc: StoredDocument;
+    totals: TotalsResult;
+    currentPage: number;
+    totalPages: number;
+    showColumnHeader: boolean;
+    itemOffset: number;
+    isLastPage: boolean;
+    allItems?: LineItem[];
+    showBounds: boolean;
+    onColsResize?: (rowId: string, widths: string[]) => void;
+    resizeScale?: number;
+}) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const colDragRef = useRef<{
+        startX: number;
+        leftPct: number;
+        totalPct: number;
+        leftElIdx: number;
+    } | null>(null);
+
+    const colWidthsPct = elements.map((el) =>
+        parseFloat(el.styles?.gridColWidth ?? "0"),
+    );
+
+    // Cumulative boundary positions for drag handles
+    const colBoundaries: Array<{ pct: number; elIdx: number }> = [];
+    if (onColsResize && elements.length > 1) {
+        let cum = 0;
+        for (let i = 0; i < elements.length - 1; i++) {
+            const w = colWidthsPct[i];
+            if (isNaN(w)) break;
+            cum += w;
+            colBoundaries.push({ pct: cum, elIdx: i });
+        }
+    }
+
+    function startColDrag(e: React.MouseEvent, elIdx: number) {
+        e.preventDefault();
+        e.stopPropagation();
+        const container = containerRef.current;
+        if (!container || !onColsResize) return;
+        const containerW = container.offsetWidth;
+        const leftPct = colWidthsPct[elIdx];
+        const rightPct = colWidthsPct[elIdx + 1];
+        if (isNaN(leftPct) || isNaN(rightPct)) return;
+        colDragRef.current = {
+            startX: e.clientX,
+            leftPct,
+            totalPct: leftPct + rightPct,
+            leftElIdx: elIdx,
+        };
+
+        function onMove(ev: MouseEvent) {
+            if (!colDragRef.current) return;
+            const {
+                startX,
+                leftPct: origLeft,
+                totalPct,
+                leftElIdx,
+            } = colDragRef.current;
+            const deltaCanvas = (ev.clientX - startX) / resizeScale;
+            const deltaPct = (deltaCanvas / containerW) * 100;
+            const newLeft = Math.max(
+                10,
+                Math.min(totalPct - 10, origLeft + deltaPct),
+            );
+            const newRight = totalPct - newLeft;
+            const newWidths = elements.map((el, i) => {
+                if (i === leftElIdx) return `${newLeft.toFixed(1)}%`;
+                if (i === leftElIdx + 1) return `${newRight.toFixed(1)}%`;
+                return el.styles?.gridColWidth ?? "50%";
+            });
+            onColsResize!(rowId, newWidths);
+        }
+
+        function onUp() {
+            colDragRef.current = null;
+            document.removeEventListener("mousemove", onMove);
+            document.removeEventListener("mouseup", onUp);
+        }
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+    }
+
+    return (
+        <div ref={containerRef} className="relative flex flex-row">
+            {elements.map((el) => (
+                <BoundedCell
+                    key={el.id}
+                    sectionType="body"
+                    showBounds={showBounds}
+                    style={{
+                        flex: el.styles?.gridColWidth
+                            ? `0 0 ${el.styles.gridColWidth}`
+                            : "1",
+                        minWidth: 0,
+                        zIndex: el.zIndex,
+                        position: "relative",
+                    }}
+                >
+                    {renderElement(
+                        el,
+                        doc,
+                        totals,
+                        currentPage,
+                        totalPages,
+                        showColumnHeader,
+                        itemOffset,
+                        isLastPage,
+                        allItems,
+                    )}
+                </BoundedCell>
+            ))}
+
+            {/* Column resize handles */}
+            {colBoundaries.map((boundary) => (
+                <div
+                    key={boundary.elIdx}
+                    style={{
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        left: `${boundary.pct}%`,
+                        width: 10,
+                        marginLeft: -5,
+                        zIndex: 60,
+                        cursor: "col-resize",
+                    }}
+                    className="group/colhandle flex items-center justify-center select-none"
+                    onMouseDown={(e) => startColDrag(e, boundary.elIdx)}
+                    title="Drag to resize column"
+                >
+                    <div className="absolute inset-y-0 w-0.5 bg-green-400 opacity-25 group-hover/colhandle:opacity-75 transition-opacity" />
+                </div>
+            ))}
         </div>
     );
 }

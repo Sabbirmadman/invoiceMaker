@@ -71,6 +71,42 @@ export function getDetailsFieldOptions(docType: DocumentType) {
     return INVOICE_DETAILS_FIELD_OPTIONS;
 }
 
+// ──────────────────────────────────────────────────────────────────────
+// Body first-page grid system
+// ──────────────────────────────────────────────────────────────────────
+
+export type BodyElementKey =
+    | "billTo"
+    | "shipTo"
+    | "details"
+    | "logo"
+    | "companyDetails";
+
+export interface BodyGridColumn {
+    width: string;
+    element: BodyElementKey | "empty";
+    companyFields?: CompanyField[];
+    detailsFields?: string[];
+}
+
+export interface BodySingleItem {
+    type: "single";
+    key: BodyElementKey;
+    show: boolean;
+    companyFields?: CompanyField[];
+    detailsFields?: string[];
+}
+
+export interface BodyGridItem {
+    type: "grid";
+    id: string;
+    columns: BodyGridColumn[];
+}
+
+export type BodyFirstPageItem = BodySingleItem | BodyGridItem;
+
+// ──────────────────────────────────────────────────────────────────────
+
 export interface ColumnConfig {
     width: string; // e.g. "50%"
     element: HeaderElementSlot | FooterElementSlot;
@@ -103,9 +139,8 @@ export interface WizardState {
     logoMaxHeight: string; // e.g. '80px' or '100%'
 
     // Step 4: Body elements
-    showBillTo: boolean;
-    showShipTo: boolean;
-    showDetailsBlock: boolean; // invoiceDetails / estimateDetails / receiptDetails
+    /** Ordered list of first-page body items — single toggle rows and/or grid rows */
+    bodyFirstPageItems: BodyFirstPageItem[];
     itemColumns: string[]; // e.g. ['name','qty','rate','amount']
     itemHeaderBackground: string;
     itemHeaderColor: string;
@@ -113,15 +148,7 @@ export interface WizardState {
     totalsShow: string[]; // e.g. ['subTotal','tax1','total','balanceDue']
     showNotes: boolean;
     showTerms: boolean;
-    showLogo: boolean; // logo in body (first-page)
-    showCompanyDetails: boolean; // company details in body (first-page)
     showDivider: boolean; // divider line in body (before totals)
-    bodyCompanyFields?: CompanyField[]; // visible fields for body companyDetails element
-    bodyDetailsFields?: string[]; // visible fields for body detailsBlock element
-    // Ordered list of first-page body element keys for reordering
-    bodyFirstPageOrder: Array<
-        "billTo" | "shipTo" | "details" | "logo" | "companyDetails"
-    >;
     // Ordered list of last-page body element keys for reordering
     bodyLastPageOrder: Array<"totals" | "notes" | "terms" | "divider">;
 
@@ -157,18 +184,12 @@ export function defaultWizardState(): WizardState {
         ],
         logoFit: "contain",
         logoMaxHeight: "80px",
-        showBillTo: true,
-        showShipTo: false,
-        showDetailsBlock: false, // already in header by default
-        showLogo: false,
-        showCompanyDetails: false,
-        showDivider: false,
-        bodyFirstPageOrder: [
-            "billTo",
-            "shipTo",
-            "details",
-            "logo",
-            "companyDetails",
+        bodyFirstPageItems: [
+            { type: "single", key: "billTo", show: true },
+            { type: "single", key: "shipTo", show: false },
+            { type: "single", key: "details", show: false },
+            { type: "single", key: "logo", show: false },
+            { type: "single", key: "companyDetails", show: false },
         ],
         bodyLastPageOrder: ["divider", "totals", "notes", "terms"],
         itemColumns: ["name", "qty", "rate", "amount"],
@@ -370,6 +391,94 @@ function footerSlotElement(
 }
 
 // ──────────────────────────────────────────────────────────────────────
+// Body element factory
+// ──────────────────────────────────────────────────────────────────────
+
+function bodyElementForKey(
+    key: BodyElementKey,
+    state: WizardState,
+    companyFields?: CompanyField[],
+    detailsFields?: string[],
+): TemplateElement | null {
+    switch (key) {
+        case "billTo":
+            return {
+                id: uid("el_bill_to"),
+                type: "billTo",
+                placement: "first-page",
+                zIndex: 3,
+                bindings: {
+                    name: "{{client.name}}",
+                    company: "{{client.company}}",
+                    address: "{{client.address}}",
+                    city: "{{client.city}}",
+                    state: "{{client.state}}",
+                    zip: "{{client.zip}}",
+                    country: "{{client.country}}",
+                    phone: "{{client.phone}}",
+                    email: "{{client.email}}",
+                },
+            };
+        case "shipTo":
+            return {
+                id: uid("el_ship_to"),
+                type: "shipTo",
+                placement: "first-page",
+                zIndex: 3,
+                bindings: {
+                    shippingAddress: "{{client.shippingAddress}}",
+                },
+            };
+        case "details": {
+            const el = detailsElement(
+                state.documentType,
+                "col_body",
+                "row_body",
+                detailsFields,
+                state.accentColor,
+            );
+            return {
+                ...el,
+                placement: "first-page" as const,
+                gridArea: undefined,
+            };
+        }
+        case "logo":
+            return {
+                id: uid("el_body_logo"),
+                type: "logo" as const,
+                placement: "first-page" as const,
+                zIndex: 3,
+                styles: {
+                    maxHeight: state.logoMaxHeight,
+                    objectFit: state.logoFit,
+                    ...(state.logoFit === "fill"
+                        ? { width: "100%", height: "100%" }
+                        : {}),
+                },
+            };
+        case "companyDetails":
+            return {
+                id: uid("el_body_company"),
+                type: "companyDetails" as const,
+                placement: "first-page" as const,
+                zIndex: 3,
+                config: {
+                    fields: companyFields ?? ALL_COMPANY_FIELDS,
+                },
+                bindings: {
+                    name: "{{company.name}}",
+                    address: "{{company.address}}",
+                    phone: "{{company.phone}}",
+                    email: "{{company.email}}",
+                    website: "{{company.website}}",
+                    taxId: "{{company.taxId}}",
+                },
+            };
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────
 // Main builder
 // ──────────────────────────────────────────────────────────────────────
 
@@ -444,88 +553,37 @@ export function buildTemplateFromWizard(
     // ── Body ─────────────────────────────────────────────────────────────
     const bodyElements: TemplateElement[] = [];
 
-    // Map of first-page element builders keyed by order id
-    const firstPageBuilders: Record<string, TemplateElement | null> = {
-        billTo: state.showBillTo
-            ? {
-                  id: uid("el_bill_to"),
-                  type: "billTo",
-                  placement: "first-page",
-                  zIndex: 3,
-                  bindings: {
-                      name: "{{client.name}}",
-                      company: "{{client.company}}",
-                      address: "{{client.address}}",
-                      city: "{{client.city}}",
-                      state: "{{client.state}}",
-                      zip: "{{client.zip}}",
-                      country: "{{client.country}}",
-                      phone: "{{client.phone}}",
-                      email: "{{client.email}}",
-                  },
-              }
-            : null,
-        shipTo: state.showShipTo
-            ? {
-                  id: uid("el_ship_to"),
-                  type: "shipTo",
-                  placement: "first-page",
-                  zIndex: 3,
-                  bindings: { shippingAddress: "{{client.shippingAddress}}" },
-              }
-            : null,
-        details: state.showDetailsBlock
-            ? {
-                  ...detailsElement(
-                      state.documentType,
-                      "col_body",
-                      "row_body",
-                      state.bodyDetailsFields,
-                  ),
-                  placement: "first-page" as const,
-                  gridArea: undefined,
-              }
-            : null,
-        logo: state.showLogo
-            ? {
-                  id: uid("el_body_logo"),
-                  type: "logo" as const,
-                  placement: "first-page" as const,
-                  zIndex: 3,
-                  styles: {
-                      maxHeight: state.logoMaxHeight,
-                      objectFit: state.logoFit,
-                      ...(state.logoFit === "fill"
-                          ? { width: "100%", height: "100%" }
-                          : {}),
-                  },
-              }
-            : null,
-        companyDetails: state.showCompanyDetails
-            ? {
-                  id: uid("el_body_company"),
-                  type: "companyDetails" as const,
-                  placement: "first-page" as const,
-                  zIndex: 3,
-                  config: {
-                      fields: state.bodyCompanyFields ?? ALL_COMPANY_FIELDS,
-                  },
-                  bindings: {
-                      name: "{{company.name}}",
-                      address: "{{company.address}}",
-                      phone: "{{company.phone}}",
-                      email: "{{company.email}}",
-                      website: "{{company.website}}",
-                      taxId: "{{company.taxId}}",
-                  },
-              }
-            : null,
-    };
-
-    // Add first-page elements in user-defined order
-    for (const key of state.bodyFirstPageOrder) {
-        const el = firstPageBuilders[key];
-        if (el) bodyElements.push(el);
+    // Add first-page items in user-defined order (singles + grid rows)
+    for (const item of state.bodyFirstPageItems) {
+        if (item.type === "single") {
+            if (!item.show) continue;
+            const el = bodyElementForKey(
+                item.key,
+                state,
+                item.companyFields,
+                item.detailsFields,
+            );
+            if (el) bodyElements.push(el);
+        } else {
+            // grid row — add each non-empty column element tagged with gridRowId
+            for (const col of item.columns) {
+                if (col.element === "empty") continue;
+                const el = bodyElementForKey(
+                    col.element,
+                    state,
+                    col.companyFields,
+                    col.detailsFields,
+                );
+                if (el) {
+                    el.gridRowId = item.id;
+                    el.styles = {
+                        ...(el.styles ?? {}),
+                        gridColWidth: col.width,
+                    };
+                    bodyElements.push(el);
+                }
+            }
+        }
     }
 
     bodyElements.push({
@@ -760,13 +818,6 @@ export function wizardStateFromTemplate(tmpl: Template): WizardState {
 
     // ── Step 4: Body ────────────────────────────────────────────────────
     const bodyEls = tmpl.body.elements;
-    const showBillTo = bodyEls.some((e) => e.type === "billTo");
-    const showShipTo = bodyEls.some((e) => e.type === "shipTo");
-
-    // detailsBlock in body = details element with first-page placement and no gridArea
-    const showDetailsBlock = bodyEls.some(
-        (e) => DETAILS_TYPES.includes(e.type) && !e.gridArea,
-    );
 
     const itemListEl = bodyEls.find((e) => e.type === "itemList");
     const itemColumns =
@@ -786,43 +837,100 @@ export function wizardStateFromTemplate(tmpl: Template): WizardState {
     const showTerms = bodyEls.some(
         (e) => e.type === "termsConditions" && !e.gridArea,
     );
-    const showLogo = bodyEls.some((e) => e.type === "logo");
-    const showCompanyDetails = bodyEls.some(
-        (e) => e.type === "companyDetails" && !e.gridArea,
-    );
     const showDivider = bodyEls.some((e) => e.type === "divider");
 
-    const bodyCompanyEl = bodyEls.find(
-        (e) => e.type === "companyDetails" && !e.gridArea,
-    );
-    const bodyCompanyFields = bodyCompanyEl?.config?.fields as
-        | CompanyField[]
-        | undefined;
-
-    const bodyDetailsEl = bodyEls.find(
-        (e) => DETAILS_TYPES.includes(e.type) && !e.gridArea,
-    );
-    const bodyDetailsFields = bodyDetailsEl?.config?.fields as
-        | string[]
-        | undefined;
-
-    // Reconstruct first-page element order from body elements
+    // Reconstruct bodyFirstPageItems from saved body elements
     const firstPageEls = bodyEls.filter(
         (e) => (e.placement ?? "last-page") === "first-page",
     );
-    const bodyFirstPageOrder = firstPageEls
-        .map((e): WizardState["bodyFirstPageOrder"][number] | null => {
-            if (e.type === "billTo") return "billTo";
-            if (e.type === "shipTo") return "shipTo";
-            if (DETAILS_TYPES.includes(e.type) && !e.gridArea) return "details";
-            if (e.type === "logo") return "logo";
-            if (e.type === "companyDetails" && !e.gridArea)
-                return "companyDetails";
-            return null;
-        })
-        .filter(
-            (k): k is WizardState["bodyFirstPageOrder"][number] => k !== null,
-        );
+
+    function elementTypeToBodyKey(type: string): BodyElementKey | null {
+        if (type === "billTo") return "billTo";
+        if (type === "shipTo") return "shipTo";
+        if (DETAILS_TYPES.includes(type as ElementType)) return "details";
+        if (type === "logo") return "logo";
+        if (type === "companyDetails") return "companyDetails";
+        return null;
+    }
+
+    const seenGridIds = new Set<string>();
+    const usedSingleKeys = new Set<BodyElementKey>();
+    const bodyFirstPageItems: BodyFirstPageItem[] = [];
+
+    for (const el of firstPageEls) {
+        if (el.gridRowId) {
+            if (!seenGridIds.has(el.gridRowId)) {
+                seenGridIds.add(el.gridRowId);
+                const rowEls = firstPageEls.filter(
+                    (e) => e.gridRowId === el.gridRowId,
+                );
+                const columns: BodyGridColumn[] = rowEls.map((re) => {
+                    const key = elementTypeToBodyKey(re.type) ?? "empty";
+                    return {
+                        width: re.styles?.gridColWidth ?? "50%",
+                        element: key,
+                        ...(re.type === "companyDetails"
+                            ? {
+                                  companyFields: re.config?.fields as
+                                      | CompanyField[]
+                                      | undefined,
+                              }
+                            : {}),
+                        ...(DETAILS_TYPES.includes(re.type as ElementType)
+                            ? {
+                                  detailsFields: re.config?.fields as
+                                      | string[]
+                                      | undefined,
+                              }
+                            : {}),
+                    };
+                });
+                bodyFirstPageItems.push({
+                    type: "grid",
+                    id: el.gridRowId,
+                    columns,
+                });
+            }
+        } else {
+            const key = elementTypeToBodyKey(el.type);
+            if (key && !usedSingleKeys.has(key)) {
+                usedSingleKeys.add(key);
+                bodyFirstPageItems.push({
+                    type: "single",
+                    key,
+                    show: true,
+                    ...(el.type === "companyDetails"
+                        ? {
+                              companyFields: el.config?.fields as
+                                  | CompanyField[]
+                                  | undefined,
+                          }
+                        : {}),
+                    ...(DETAILS_TYPES.includes(el.type)
+                        ? {
+                              detailsFields: el.config?.fields as
+                                  | string[]
+                                  | undefined,
+                          }
+                        : {}),
+                });
+            }
+        }
+    }
+
+    // Append any single keys not found in the template as hidden items
+    const ALL_BODY_KEYS: BodyElementKey[] = [
+        "billTo",
+        "shipTo",
+        "details",
+        "logo",
+        "companyDetails",
+    ];
+    for (const key of ALL_BODY_KEYS) {
+        if (!usedSingleKeys.has(key)) {
+            bodyFirstPageItems.push({ type: "single", key, show: false });
+        }
+    }
 
     const lastPageEls = bodyEls.filter(
         (e) => (e.placement ?? "last-page") === "last-page",
@@ -894,18 +1002,11 @@ export function wizardStateFromTemplate(tmpl: Template): WizardState {
         headerColumns,
         logoFit,
         logoMaxHeight,
-        showBillTo,
-        showShipTo,
-        showDetailsBlock,
-        showLogo,
-        showCompanyDetails,
         showDivider,
-        bodyCompanyFields,
-        bodyDetailsFields,
-        bodyFirstPageOrder:
-            bodyFirstPageOrder.length > 0
-                ? bodyFirstPageOrder
-                : defaults.bodyFirstPageOrder,
+        bodyFirstPageItems:
+            bodyFirstPageItems.length > 0
+                ? bodyFirstPageItems
+                : defaults.bodyFirstPageItems,
         bodyLastPageOrder:
             bodyLastPageOrder.length > 0
                 ? bodyLastPageOrder

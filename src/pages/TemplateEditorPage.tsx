@@ -16,6 +16,9 @@ import {
     AlignCenter,
     AlignRight,
     ChevronUp,
+    Plus,
+    LayoutGrid,
+    Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +47,11 @@ import type {
     HeaderElementSlot,
     FooterElementSlot,
     CompanyField,
+    BodyElementKey,
+    BodyGridColumn,
+    BodySingleItem,
+    BodyGridItem,
+    BodyFirstPageItem,
 } from "@/utils/buildTemplate";
 import {
     addCustomTemplate,
@@ -432,19 +440,20 @@ function ColumnConfigurator({
 
     function setNumCols(n: number) {
         if (n === numCols) return;
+        const equalWidth = `${(100 / n).toFixed(1)}%`;
         if (n > numCols) {
-            const used = columns.reduce(
-                (sum, c) => sum + parseFloat(c.width),
-                0,
-            );
-            const remaining = Math.max(10, 100 - used);
-            const next = [...columns];
-            for (let i = numCols; i < n; i++) {
-                next.push({ width: `${remaining}%`, element: "empty" });
-            }
+            const next = [
+                ...columns.map((c) => ({ ...c, width: equalWidth })),
+                ...Array.from({ length: n - numCols }, () => ({
+                    width: equalWidth,
+                    element: "empty" as ColumnConfig["element"],
+                })),
+            ];
             onChange(next);
         } else {
-            onChange(columns.slice(0, n));
+            onChange(
+                columns.slice(0, n).map((c) => ({ ...c, width: equalWidth })),
+            );
         }
     }
 
@@ -454,6 +463,11 @@ function ColumnConfigurator({
 
     return (
         <div className="space-y-3">
+            {numCols > 1 && (
+                <p className="text-[11px] text-muted-foreground/70">
+                    Drag the dividers in the preview to resize columns.
+                </p>
+            )}
             <div>
                 <Label className="text-xs text-muted-foreground">Columns</Label>
                 <Select
@@ -481,48 +495,33 @@ function ColumnConfigurator({
                     <p className="text-xs font-medium text-muted-foreground">
                         Column {i + 1}
                     </p>
-                    <div className="grid grid-cols-2 gap-2">
-                        <div>
-                            <Label className="text-xs text-muted-foreground">
-                                Width
-                            </Label>
-                            <Input
-                                value={col.width}
-                                onChange={(e) =>
-                                    updateCol(i, { width: e.target.value })
-                                }
-                                className="h-7 text-xs mt-0.5"
-                                placeholder="50%"
-                            />
-                        </div>
-                        <div>
-                            <Label className="text-xs text-muted-foreground">
-                                Element
-                            </Label>
-                            <Select
-                                value={col.element}
-                                onValueChange={(v) =>
-                                    updateCol(i, {
-                                        element: v as HeaderElementSlot &
-                                            FooterElementSlot,
-                                    })
-                                }
-                            >
-                                <SelectTrigger className="h-7 mt-0.5 text-xs">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {slotOptions.map((opt) => (
-                                        <SelectItem
-                                            key={opt.value}
-                                            value={opt.value}
-                                        >
-                                            {opt.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                    <div>
+                        <Label className="text-xs text-muted-foreground">
+                            Element
+                        </Label>
+                        <Select
+                            value={col.element}
+                            onValueChange={(v) =>
+                                updateCol(i, {
+                                    element: v as HeaderElementSlot &
+                                        FooterElementSlot,
+                                })
+                            }
+                        >
+                            <SelectTrigger className="h-7 mt-0.5 text-xs">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {slotOptions.map((opt) => (
+                                    <SelectItem
+                                        key={opt.value}
+                                        value={opt.value}
+                                    >
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     {col.element === "textLabel" && (
                         <div>
@@ -970,6 +969,328 @@ function ThemeSection({
     );
 }
 
+// ── Body grid row editor ──────────────────────────────────────────────
+
+const BODY_ELEMENT_LABELS: Record<BodyElementKey, string> = {
+    billTo: "Bill To",
+    shipTo: "Ship To",
+    details: "Invoice / Estimate / Receipt Details",
+    logo: "Company Logo",
+    companyDetails: "Company Details",
+};
+
+function bodyElementOptions(
+    documentType: string,
+): { value: BodyElementKey | "empty"; label: string }[] {
+    const detailsLabel =
+        documentType === "estimate"
+            ? "Estimate Details"
+            : documentType === "receipt"
+              ? "Receipt Details"
+              : "Invoice Details";
+    return [
+        { value: "empty", label: "Empty" },
+        { value: "billTo", label: "Bill To" },
+        { value: "shipTo", label: "Ship To" },
+        { value: "details", label: detailsLabel },
+        { value: "logo", label: "Company Logo" },
+        { value: "companyDetails", label: "Company Details" },
+    ];
+}
+
+function GridRowEditor({
+    item,
+    idx,
+    itemCount,
+    onMove,
+    onUpdate,
+    onRemove,
+    documentType,
+}: {
+    item: BodyGridItem;
+    idx: number;
+    itemCount: number;
+    onMove: (dir: -1 | 1) => void;
+    onUpdate: (updated: BodyGridItem) => void;
+    onRemove: () => void;
+    documentType: string;
+}) {
+    const [open, setOpen] = useState(true);
+
+    function updateColumn(colIdx: number, patch: Partial<BodyGridColumn>) {
+        onUpdate({
+            ...item,
+            columns: item.columns.map((col, ci) =>
+                ci === colIdx ? { ...col, ...patch } : col,
+            ),
+        });
+    }
+
+    function addColumn() {
+        if (item.columns.length >= 3) return;
+        const existingTotal = item.columns.reduce(
+            (sum, c) => sum + parseFloat(c.width),
+            0,
+        );
+        const remaining = Math.max(10, 100 - existingTotal);
+        onUpdate({
+            ...item,
+            columns: [
+                ...item.columns,
+                { width: `${remaining}%`, element: "empty" },
+            ],
+        });
+    }
+
+    function removeColumn(colIdx: number) {
+        if (item.columns.length <= 1) return;
+        onUpdate({
+            ...item,
+            columns: item.columns.filter((_, ci) => ci !== colIdx),
+        });
+    }
+
+    const fieldOptions = getDetailsFieldOptions(
+        documentType as "invoice" | "estimate" | "receipt",
+    );
+    const allDetailsFields = fieldOptions.map((o) => o.value);
+
+    return (
+        <div className="border rounded-md overflow-hidden">
+            {/* Header row */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border-b">
+                <LayoutGrid className="size-4 text-primary shrink-0" />
+                <span className="text-sm font-medium flex-1 text-foreground">
+                    Grid Row
+                </span>
+                <div className="flex items-center gap-0.5">
+                    <button
+                        type="button"
+                        onClick={() => onMove(-1)}
+                        disabled={idx === 0}
+                        className="p-1 rounded hover:bg-muted disabled:opacity-30"
+                        title="Move up"
+                    >
+                        <ChevronUp className="size-3.5" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onMove(1)}
+                        disabled={idx === itemCount - 1}
+                        className="p-1 rounded hover:bg-muted disabled:opacity-30"
+                        title="Move down"
+                    >
+                        <ChevronDown className="size-3.5" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onRemove}
+                        className="p-1 rounded hover:bg-destructive/10"
+                        title="Delete grid row"
+                    >
+                        <Trash2 className="size-3.5 text-destructive" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setOpen((o) => !o)}
+                        className="p-1 rounded hover:bg-muted ml-1"
+                    >
+                        <ChevronDown
+                            className={`size-3.5 text-muted-foreground transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+                        />
+                    </button>
+                </div>
+            </div>
+
+            {/* Column configurators */}
+            {open && (
+                <div className="p-3 space-y-3 bg-muted/5">
+                    <p className="text-[11px] text-muted-foreground/70">
+                        Drag the dividers in the preview to resize columns.
+                    </p>
+                    {item.columns.map((col, colIdx) => (
+                        <div
+                            key={colIdx}
+                            className="border rounded-md p-3 space-y-2 bg-muted/20"
+                        >
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-medium text-muted-foreground">
+                                    Column {colIdx + 1}
+                                </p>
+                                {item.columns.length > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => removeColumn(colIdx)}
+                                        className="p-0.5 rounded hover:bg-destructive/10"
+                                        title="Remove column"
+                                    >
+                                        <X className="size-3 text-destructive" />
+                                    </button>
+                                )}
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground">
+                                    Element
+                                </Label>
+                                <Select
+                                    value={col.element}
+                                    onValueChange={(v) =>
+                                        updateColumn(colIdx, {
+                                            element: v as
+                                                | BodyElementKey
+                                                | "empty",
+                                        })
+                                    }
+                                >
+                                    <SelectTrigger className="h-7 mt-0.5 text-xs">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {bodyElementOptions(documentType).map(
+                                            (opt) => (
+                                                <SelectItem
+                                                    key={opt.value}
+                                                    value={opt.value}
+                                                >
+                                                    {opt.label}
+                                                </SelectItem>
+                                            ),
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {col.element === "companyDetails" && (
+                                <div>
+                                    <Label className="text-xs text-muted-foreground mb-1 block">
+                                        Visible Fields
+                                    </Label>
+                                    <div className="grid grid-cols-2 gap-y-1.5 gap-x-3">
+                                        {COMPANY_FIELD_OPTIONS.map((opt) => {
+                                            const activeFields =
+                                                col.companyFields ??
+                                                ALL_COMPANY_FIELDS;
+                                            const checked =
+                                                activeFields.includes(
+                                                    opt.value,
+                                                );
+                                            return (
+                                                <label
+                                                    key={opt.value}
+                                                    className="flex items-center gap-2 cursor-pointer group"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={(e) => {
+                                                            const next = e
+                                                                .target.checked
+                                                                ? [
+                                                                      ...activeFields,
+                                                                      opt.value,
+                                                                  ]
+                                                                : activeFields.filter(
+                                                                      (f) =>
+                                                                          f !==
+                                                                          opt.value,
+                                                                  );
+                                                            updateColumn(
+                                                                colIdx,
+                                                                {
+                                                                    companyFields:
+                                                                        next.length >
+                                                                        0
+                                                                            ? next
+                                                                            : activeFields,
+                                                                },
+                                                            );
+                                                        }}
+                                                        className="size-3.5 rounded"
+                                                    />
+                                                    <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                                                        {opt.label}
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                            {col.element === "details" && (
+                                <div>
+                                    <Label className="text-xs text-muted-foreground mb-1 block">
+                                        Visible Fields
+                                    </Label>
+                                    <div className="grid grid-cols-2 gap-y-1.5 gap-x-3">
+                                        {fieldOptions.map((opt) => {
+                                            const activeFields =
+                                                col.detailsFields ??
+                                                allDetailsFields;
+                                            const checked =
+                                                activeFields.includes(
+                                                    opt.value,
+                                                );
+                                            return (
+                                                <label
+                                                    key={opt.value}
+                                                    className="flex items-center gap-2 cursor-pointer group"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={(e) => {
+                                                            const next = e
+                                                                .target.checked
+                                                                ? [
+                                                                      ...activeFields,
+                                                                      opt.value,
+                                                                  ]
+                                                                : activeFields.filter(
+                                                                      (f) =>
+                                                                          f !==
+                                                                          opt.value,
+                                                                  );
+                                                            updateColumn(
+                                                                colIdx,
+                                                                {
+                                                                    detailsFields:
+                                                                        next.length >
+                                                                        0
+                                                                            ? next
+                                                                            : activeFields,
+                                                                },
+                                                            );
+                                                        }}
+                                                        className="size-3.5 rounded"
+                                                    />
+                                                    <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                                                        {opt.label}
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                    {item.columns.length < 3 && (
+                        <button
+                            type="button"
+                            onClick={addColumn}
+                            className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+                        >
+                            <Plus className="size-3.5" />
+                            Add Column
+                        </button>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── Body section panel ────────────────────────────────────────────────
+
 function BodySection({
     state,
     patch,
@@ -984,40 +1305,66 @@ function BodySection({
               ? "Receipt Details"
               : "Invoice Details";
 
-    // Visibility maps
-    const firstPageVisible: Record<string, boolean> = {
-        billTo: state.showBillTo,
-        shipTo: state.showShipTo,
-        details: state.showDetailsBlock,
-        logo: state.showLogo,
-        companyDetails: state.showCompanyDetails,
-    };
-    const firstPageLabels: Record<string, string> = {
-        billTo: "Bill To",
-        shipTo: "Ship To",
-        details: detailsLabel,
-        logo: "Company Logo",
-        companyDetails: "Company Details",
-    };
-    const lastPageVisible: Record<string, boolean> = {
-        divider: state.showDivider,
-        totals: true, // always on
-        notes: state.showNotes,
-        terms: state.showTerms,
-    };
-    const lastPageLabels: Record<string, string> = {
-        divider: "Divider Line",
-        totals: "Totals Block",
-        notes: "Notes",
-        terms: "Terms & Conditions",
-    };
+    function updateItems(next: BodyFirstPageItem[]) {
+        patch({ bodyFirstPageItems: next });
+    }
 
-    function moveFirstPage(idx: number, dir: -1 | 1) {
-        const next = [...state.bodyFirstPageOrder];
+    function moveItem(idx: number, dir: -1 | 1) {
+        const next = [...state.bodyFirstPageItems];
         const swap = idx + dir;
         if (swap < 0 || swap >= next.length) return;
         [next[idx], next[swap]] = [next[swap], next[idx]];
-        patch({ bodyFirstPageOrder: next });
+        updateItems(next);
+    }
+
+    function updateItem(idx: number, updated: BodyFirstPageItem) {
+        updateItems(
+            state.bodyFirstPageItems.map((item, i) =>
+                i === idx ? updated : item,
+            ),
+        );
+    }
+
+    function removeItem(idx: number) {
+        updateItems(state.bodyFirstPageItems.filter((_, i) => i !== idx));
+    }
+
+    function addGridRow() {
+        const id = `grid_${Date.now()}`;
+        const newItem: BodyGridItem = {
+            type: "grid",
+            id,
+            columns: [
+                { width: "50%", element: "empty" },
+                { width: "50%", element: "empty" },
+            ],
+        };
+        updateItems([...state.bodyFirstPageItems, newItem]);
+    }
+
+    // Single items with fields for the field-selector sections below
+    const singleCompanyItem = state.bodyFirstPageItems.find(
+        (item): item is BodySingleItem =>
+            item.type === "single" &&
+            item.key === "companyDetails" &&
+            item.show,
+    );
+    const singleDetailsItem = state.bodyFirstPageItems.find(
+        (item): item is BodySingleItem =>
+            item.type === "single" && item.key === "details" && item.show,
+    );
+
+    function updateSingleItem(
+        key: BodyElementKey,
+        patch2: Partial<BodySingleItem>,
+    ) {
+        updateItems(
+            state.bodyFirstPageItems.map((item) =>
+                item.type === "single" && item.key === key
+                    ? { ...item, ...patch2 }
+                    : item,
+            ),
+        );
     }
 
     function moveLastPage(idx: number, dir: -1 | 1) {
@@ -1028,18 +1375,18 @@ function BodySection({
         patch({ bodyLastPageOrder: next });
     }
 
-    function toggleFirstPage(key: string, checked: boolean) {
-        const patchMap: Partial<WizardState> = {
-            showBillTo: key === "billTo" ? checked : state.showBillTo,
-            showShipTo: key === "shipTo" ? checked : state.showShipTo,
-            showDetailsBlock:
-                key === "details" ? checked : state.showDetailsBlock,
-            showLogo: key === "logo" ? checked : state.showLogo,
-            showCompanyDetails:
-                key === "companyDetails" ? checked : state.showCompanyDetails,
-        };
-        patch(patchMap);
-    }
+    const lastPageVisible: Record<string, boolean> = {
+        divider: state.showDivider,
+        totals: true,
+        notes: state.showNotes,
+        terms: state.showTerms,
+    };
+    const lastPageLabels: Record<string, string> = {
+        divider: "Divider Line",
+        totals: "Totals Block",
+        notes: "Notes",
+        terms: "Terms & Conditions",
+    };
 
     function toggleLastPage(key: string, checked: boolean) {
         const patchMap: Partial<WizardState> = {
@@ -1054,54 +1401,77 @@ function BodySection({
         <>
             <SectionGroup title="First Page Elements">
                 <p className="text-xs text-muted-foreground -mt-1">
-                    Toggle and reorder elements shown above the item table on
-                    page 1.
+                    Toggle, reorder, or arrange elements into grid rows above
+                    the item table on page 1.
                 </p>
                 <div className="space-y-2">
-                    {state.bodyFirstPageOrder.map((key, idx) => (
-                        <div
-                            key={key}
-                            className="flex items-center gap-2 p-2 rounded-md border bg-muted/20"
-                        >
-                            <input
-                                type="checkbox"
-                                checked={!!firstPageVisible[key]}
-                                onChange={(e) =>
-                                    toggleFirstPage(key, e.target.checked)
-                                }
-                                className="size-4 rounded shrink-0"
-                                disabled={key === "totals"}
-                            />
-                            <span className="text-sm flex-1 text-muted-foreground">
-                                {firstPageLabels[key]}
-                            </span>
-                            <div className="flex gap-0.5">
-                                <button
-                                    type="button"
-                                    onClick={() => moveFirstPage(idx, -1)}
-                                    disabled={idx === 0}
-                                    className="p-1 rounded hover:bg-muted disabled:opacity-30"
-                                >
-                                    <ChevronUp className="size-3.5" />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => moveFirstPage(idx, 1)}
-                                    disabled={
-                                        idx ===
-                                        state.bodyFirstPageOrder.length - 1
+                    {state.bodyFirstPageItems.map((item, idx) =>
+                        item.type === "single" ? (
+                            <div
+                                key={item.key}
+                                className="flex items-center gap-2 p-2 rounded-md border bg-muted/20"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={item.show}
+                                    onChange={(e) =>
+                                        updateItem(idx, {
+                                            ...item,
+                                            show: e.target.checked,
+                                        })
                                     }
-                                    className="p-1 rounded hover:bg-muted disabled:opacity-30"
-                                >
-                                    <ChevronDown className="size-3.5" />
-                                </button>
+                                    className="size-4 rounded shrink-0"
+                                />
+                                <span className="text-sm flex-1 text-muted-foreground">
+                                    {BODY_ELEMENT_LABELS[item.key]}
+                                </span>
+                                <div className="flex gap-0.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => moveItem(idx, -1)}
+                                        disabled={idx === 0}
+                                        className="p-1 rounded hover:bg-muted disabled:opacity-30"
+                                    >
+                                        <ChevronUp className="size-3.5" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => moveItem(idx, 1)}
+                                        disabled={
+                                            idx ===
+                                            state.bodyFirstPageItems.length - 1
+                                        }
+                                        className="p-1 rounded hover:bg-muted disabled:opacity-30"
+                                    >
+                                        <ChevronDown className="size-3.5" />
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ) : (
+                            <GridRowEditor
+                                key={item.id}
+                                item={item}
+                                idx={idx}
+                                itemCount={state.bodyFirstPageItems.length}
+                                onMove={(dir) => moveItem(idx, dir)}
+                                onUpdate={(updated) => updateItem(idx, updated)}
+                                onRemove={() => removeItem(idx)}
+                                documentType={state.documentType}
+                            />
+                        ),
+                    )}
                 </div>
+                <button
+                    type="button"
+                    onClick={addGridRow}
+                    className="flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
+                >
+                    <Plus className="size-3.5" />
+                    Add Grid Row
+                </button>
             </SectionGroup>
 
-            {state.showCompanyDetails && (
+            {singleCompanyItem && (
                 <SectionGroup
                     title="Company Details Fields"
                     defaultOpen={false}
@@ -1112,7 +1482,8 @@ function BodySection({
                     <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
                         {COMPANY_FIELD_OPTIONS.map((opt) => {
                             const activeFields =
-                                state.bodyCompanyFields ?? ALL_COMPANY_FIELDS;
+                                singleCompanyItem.companyFields ??
+                                ALL_COMPANY_FIELDS;
                             const checked = activeFields.includes(opt.value);
                             return (
                                 <label
@@ -1128,8 +1499,8 @@ function BodySection({
                                                 : activeFields.filter(
                                                       (f) => f !== opt.value,
                                                   );
-                                            patch({
-                                                bodyCompanyFields:
+                                            updateSingleItem("companyDetails", {
+                                                companyFields:
                                                     next.length > 0
                                                         ? next
                                                         : activeFields,
@@ -1147,13 +1518,14 @@ function BodySection({
                 </SectionGroup>
             )}
 
-            {state.showDetailsBlock &&
+            {singleDetailsItem &&
                 (() => {
                     const fieldOptions = getDetailsFieldOptions(
                         state.documentType,
                     );
                     const allFields = fieldOptions.map((o) => o.value);
-                    const activeFields = state.bodyDetailsFields ?? allFields;
+                    const activeFields =
+                        singleDetailsItem.detailsFields ?? allFields;
                     return (
                         <SectionGroup
                             title={`${detailsLabel} Fields`}
@@ -1187,12 +1559,15 @@ function BodySection({
                                                                   f !==
                                                                   opt.value,
                                                           );
-                                                    patch({
-                                                        bodyDetailsFields:
-                                                            next.length > 0
-                                                                ? next
-                                                                : activeFields,
-                                                    });
+                                                    updateSingleItem(
+                                                        "details",
+                                                        {
+                                                            detailsFields:
+                                                                next.length > 0
+                                                                    ? next
+                                                                    : activeFields,
+                                                        },
+                                                    );
                                                 }}
                                                 className="size-4 rounded"
                                             />
@@ -1613,6 +1988,76 @@ export default function TemplateEditorPage() {
                                 }
                                 onFooterResize={(h) =>
                                     patch({ footerHeight: h })
+                                }
+                                onHeaderColsResize={(widths) =>
+                                    patch({
+                                        headerColumns: state.headerColumns.map(
+                                            (c, i) => ({
+                                                ...c,
+                                                width: widths[i] ?? c.width,
+                                            }),
+                                        ),
+                                    })
+                                }
+                                onFooterColsResize={(widths) =>
+                                    patch({
+                                        footerColumns: state.footerColumns.map(
+                                            (c, i) => ({
+                                                ...c,
+                                                width: widths[i] ?? c.width,
+                                            }),
+                                        ),
+                                    })
+                                }
+                                onBodyGridRowColsResize={(rowId, widths) =>
+                                    patch({
+                                        bodyFirstPageItems:
+                                            state.bodyFirstPageItems.map(
+                                                (item) => {
+                                                    if (
+                                                        item.type !== "grid" ||
+                                                        item.id !== rowId
+                                                    )
+                                                        return item;
+                                                    const nonEmptyIndices =
+                                                        item.columns
+                                                            .map((col, i) =>
+                                                                col.element !==
+                                                                "empty"
+                                                                    ? i
+                                                                    : null,
+                                                            )
+                                                            .filter(
+                                                                (
+                                                                    i,
+                                                                ): i is number =>
+                                                                    i !== null,
+                                                            );
+                                                    const updatedCols = [
+                                                        ...item.columns,
+                                                    ];
+                                                    widths.forEach((w, wi) => {
+                                                        const colIdx =
+                                                            nonEmptyIndices[wi];
+                                                        if (
+                                                            colIdx !== undefined
+                                                        )
+                                                            updatedCols[
+                                                                colIdx
+                                                            ] = {
+                                                                ...updatedCols[
+                                                                    colIdx
+                                                                ],
+                                                                width: w,
+                                                            };
+                                                    });
+                                                    return {
+                                                        ...item,
+                                                        columns: updatedCols,
+                                                    };
+                                                },
+                                            ),
+                                    })
                                 }
                                 resizeScale={previewScale}
                             />

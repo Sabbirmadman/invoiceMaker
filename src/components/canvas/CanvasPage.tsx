@@ -16,6 +16,12 @@ interface Props {
     onHeaderResize?: (height: number) => void;
     /** Editor-only: callback to update footer height (px). Omit outside editor. */
     onFooterResize?: (height: number) => void;
+    /** Editor-only: called with new column widths when user drags a header column divider. */
+    onHeaderColsResize?: (widths: string[]) => void;
+    /** Editor-only: called with new column widths when user drags a footer column divider. */
+    onFooterColsResize?: (widths: string[]) => void;
+    /** Editor-only: called when user drags a column divider inside a body grid row. */
+    onBodyGridRowColsResize?: (rowId: string, widths: string[]) => void;
     /** CSS scale applied to the canvas by the parent — used to convert screen-pixel drag deltas to canvas pixels. */
     resizeScale?: number;
 }
@@ -29,6 +35,9 @@ export function CanvasPage({
     zoom = 1,
     onHeaderResize,
     onFooterResize,
+    onHeaderColsResize,
+    onFooterColsResize,
+    onBodyGridRowColsResize,
     resizeScale = 1,
 }: Props) {
     const { templateSnapshot } = doc;
@@ -146,6 +155,8 @@ export function CanvasPage({
                         currentPage={pageNumber}
                         totalPages={totalPages}
                         sectionType="header"
+                        onColsResize={onHeaderColsResize}
+                        resizeScale={resizeScale}
                     />
                     {/* Header resize handle — hover-only pill at the bottom edge */}
                     {onHeaderResize && (
@@ -198,6 +209,8 @@ export function CanvasPage({
                     }
                     allItems={doc.data.items}
                     postTableStartIndex={slice?.postTableStartIndex ?? 0}
+                    onGridRowColsResize={onBodyGridRowColsResize}
+                    resizeScale={resizeScale}
                     postTableEndIndex={slice?.postTableEndIndex}
                 />
             </div>
@@ -236,6 +249,8 @@ export function CanvasPage({
                         currentPage={pageNumber}
                         totalPages={totalPages}
                         sectionType="footer"
+                        onColsResize={onFooterColsResize}
+                        resizeScale={resizeScale}
                     />
                 </div>
             )}
