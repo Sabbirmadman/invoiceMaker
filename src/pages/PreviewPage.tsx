@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Printer, Download } from 'lucide-react'
+import { ArrowLeft, Printer, Download, FileCode } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { downloadPdf } from '@/services/pdfExport'
+import { downloadHtml } from '@/services/htmlExport'
 import { PageCanvas } from '@/components/canvas/PageCanvas'
 import { FillModeProvider } from '@/components/fill-mode/FillModeContext'
 import { useAppSelector } from '@/hooks/useAppDispatch'
@@ -10,7 +11,7 @@ import type { CompanyData, ClientData, InvoiceMeta, EstimateMeta, ReceiptMeta, L
 // Preview mode uses a no-op FillModeContext (fillMode=false)
 const previewCtx = {
   fillMode: false,
-  showBounds: true,
+  showBounds: false,
   docId: '',
   onUpdateCompany: (_p: Partial<CompanyData>) => {},
   onUpdateClient: (_p: Partial<ClientData>) => {},
@@ -51,6 +52,10 @@ export default function PreviewPage() {
               <Button variant="outline" size="sm" onClick={() => downloadPdf(doc)}>
                 <Download className="size-4 mr-2" />
                 Download PDF
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => downloadHtml(doc)}>
+                <FileCode className="size-4 mr-2" />
+                Download HTML
               </Button>
               <Button variant="outline" size="sm" onClick={() => window.print()}>
                 <Printer className="size-4 mr-2" />
