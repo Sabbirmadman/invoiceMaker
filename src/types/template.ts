@@ -97,3 +97,14 @@ export interface Template {
     body: BodySection;
     footer: Section;
 }
+
+// ── V1/V2 union ──────────────────────────────────────────────────────────────
+export type { TemplateV2 } from "./templateV2";
+
+/** Any template — V1 (no version field) or V2 (version: 2) */
+export type AnyTemplate = Template | import("./templateV2").TemplateV2;
+
+/** Type guard: is this a V1 template? */
+export function isTemplateV1(t: AnyTemplate): t is Template {
+    return !("version" in t);
+}
