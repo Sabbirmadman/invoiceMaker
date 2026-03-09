@@ -25,13 +25,15 @@ import type {
     AccentBorder,
     PageAccentBorders,
     TemplateGridCell,
+    WatermarkConfig,
+    SectionBorder,
 } from "@/types/templateV2";
 import { collectWidgets, collectBodyWidgets } from "@/types/templateV2";
 import type { SectionTarget } from "@/hooks/useTemplateEditor";
 import type { ElementType } from "@/types/template";
-import type { PageSize } from "@/types/common";
+import type { PageSize, DocumentType } from "@/types/common";
 
-// â”€â”€ Shared sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Shared sub-components â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function PanelSection({
     title,
@@ -221,7 +223,7 @@ function ColorInput({
     );
 }
 
-// â”€â”€ Four-side padding input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Four-side padding input â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function FourSideInput({
     values,
@@ -271,7 +273,7 @@ function FourSideInput({
     );
 }
 
-// â”€â”€ Page Settings Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Page Settings Panel â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 interface PagePanelProps {
     template: TemplateV2;
@@ -279,7 +281,7 @@ interface PagePanelProps {
         patch: Partial<
             Pick<
                 TemplateV2,
-                "pageSize" | "orientation" | "pagePadding" | "accentBorders" | "pageBackground"
+                "pageSize" | "orientation" | "pagePadding" | "accentBorders" | "pageBackground" | "theme" | "documentType"
             >
         >,
     ) => void;
@@ -354,6 +356,36 @@ function PageSettingsPanel({ template, onUpdateTemplate }: PagePanelProps) {
                     label="Color"
                     value={template.pageBackground ?? "#ffffff"}
                     onChange={(v) => onUpdateTemplate({ pageBackground: v })}
+                />
+            </PanelSection>
+
+            <PanelSection title="Document Type">
+                <SelectInput
+                    value={template.documentType}
+                    onChange={(v) => onUpdateTemplate({ documentType: v as DocumentType })}
+                    options={[
+                        { value: "invoice", label: "Invoice" },
+                        { value: "estimate", label: "Estimate" },
+                        { value: "receipt", label: "Receipt" },
+                    ]}
+                />
+            </PanelSection>
+
+            <PanelSection title="Font">
+                <SelectInput
+                    value={template.theme.fontFamily ?? ""}
+                    onChange={(v) => onUpdateTemplate({ theme: { ...template.theme, fontFamily: v } })}
+                    options={[
+                        { value: "", label: "Default (system)" },
+                        { value: "Inter, sans-serif", label: "Inter" },
+                        { value: "Georgia, serif", label: "Georgia" },
+                        { value: "Times New Roman, serif", label: "Times New Roman" },
+                        { value: "Arial, sans-serif", label: "Arial" },
+                        { value: "Helvetica Neue, Helvetica, sans-serif", label: "Helvetica" },
+                        { value: "Courier New, monospace", label: "Courier New" },
+                        { value: "Trebuchet MS, sans-serif", label: "Trebuchet" },
+                        { value: "Verdana, sans-serif", label: "Verdana" },
+                    ]}
                 />
             </PanelSection>
 
@@ -444,7 +476,7 @@ function PageSettingsPanel({ template, onUpdateTemplate }: PagePanelProps) {
     );
 }
 
-// â”€â”€ Grid Config Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Grid Config Panel â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 interface GridConfigPanelProps {
     section: SectionGridV2;
@@ -453,6 +485,7 @@ interface GridConfigPanelProps {
     onUpdateHeight?: (h: number) => void;
     onUpdateBg?: (bg: SectionGridV2["background"]) => void;
     onUpdateDividerColor?: (color: string) => void;
+    onUpdateBorder?: (border: SectionBorder | null) => void;
 }
 
 function GridConfigPanel({
@@ -462,6 +495,7 @@ function GridConfigPanel({
     onUpdateHeight,
     onUpdateBg,
     onUpdateDividerColor,
+    onUpdateBorder,
 }: GridConfigPanelProps) {
     const { grid, background } = section;
 
@@ -513,12 +547,39 @@ function GridConfigPanel({
                         max={64}
                     />
                 </Row>
-                <Row label="Padding (px)">
+            </PanelSection>
+
+            <PanelSection title="Padding (px)">
+                <Row label="Top">
                     <NumberInput
-                        value={grid.padding}
-                        onChange={(v) => onUpdate({ padding: v })}
+                        value={grid.paddingTop ?? grid.padding}
+                        onChange={(v) => onUpdate({ paddingTop: v })}
                         min={0}
-                        max={64}
+                        max={128}
+                    />
+                </Row>
+                <Row label="Right">
+                    <NumberInput
+                        value={grid.paddingRight ?? grid.padding}
+                        onChange={(v) => onUpdate({ paddingRight: v })}
+                        min={0}
+                        max={128}
+                    />
+                </Row>
+                <Row label="Bottom">
+                    <NumberInput
+                        value={grid.paddingBottom ?? grid.padding}
+                        onChange={(v) => onUpdate({ paddingBottom: v })}
+                        min={0}
+                        max={128}
+                    />
+                </Row>
+                <Row label="Left">
+                    <NumberInput
+                        value={grid.paddingLeft ?? grid.padding}
+                        onChange={(v) => onUpdate({ paddingLeft: v })}
+                        min={0}
+                        max={128}
                     />
                 </Row>
             </PanelSection>
@@ -554,6 +615,10 @@ function GridConfigPanel({
                     </Row>
                 ))}
             </PanelSection>
+
+            {onUpdateBorder && (
+                <SectionBorderPanel border={section.border ?? null} onChange={onUpdateBorder} />
+            )}
 
             {isHeaderOrFooter && onUpdateDividerColor && (
                 <PanelSection title="Divider Line">
@@ -599,7 +664,87 @@ function GridConfigPanel({
     );
 }
 
-// â”€â”€ Cell Flex Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Section Border Panel ---------------------------------------------------
+
+const DEFAULT_BORDER: SectionBorder = {
+    color: "#e2e8f0",
+    width: 1,
+    style: "solid",
+    top: false,
+    right: false,
+    bottom: false,
+    left: false,
+};
+
+function SectionBorderPanel({
+    border,
+    onChange,
+}: {
+    border: SectionBorder | null;
+    onChange: (b: SectionBorder | null) => void;
+}) {
+    const enabled = border !== null;
+    const b = border ?? DEFAULT_BORDER;
+
+    function toggle(side: "top" | "right" | "bottom" | "left") {
+        onChange({ ...b, [side]: !b[side] });
+    }
+
+    return (
+        <PanelSection title="Border">
+            <Row label="Enabled">
+                <input
+                    type="checkbox"
+                    checked={enabled}
+                    onChange={(e) => onChange(e.target.checked ? { ...DEFAULT_BORDER } : null)}
+                />
+            </Row>
+            {enabled && (
+                <>
+                    <ColorInput label="Color" value={b.color} onChange={(v) => onChange({ ...b, color: v })} />
+                    <Row label="Width (px)">
+                        <NumberInput value={b.width} onChange={(v) => onChange({ ...b, width: v })} min={1} max={20} />
+                    </Row>
+                    <Row label="Style">
+                        <select
+                            value={b.style}
+                            onChange={(e) => onChange({ ...b, style: e.target.value as SectionBorder["style"] })}
+                            style={{ fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4, padding: "3px 4px", width: "100%" }}
+                        >
+                            <option value="solid">Solid</option>
+                            <option value="dashed">Dashed</option>
+                            <option value="dotted">Dotted</option>
+                        </select>
+                    </Row>
+                    <Row label="Sides">
+                        <div style={{ display: "flex", gap: 4 }}>
+                            {(["top", "right", "bottom", "left"] as const).map((side) => (
+                                <button
+                                    key={side}
+                                    onClick={() => toggle(side)}
+                                    style={{
+                                        fontSize: 9,
+                                        padding: "2px 5px",
+                                        borderRadius: 4,
+                                        border: `1px solid ${b[side] ? "#6366f1" : "#d1d5db"}`,
+                                        background: b[side] ? "#eef2ff" : "white",
+                                        color: b[side] ? "#4f46e5" : "#64748b",
+                                        cursor: "pointer",
+                                        fontWeight: b[side] ? 700 : 400,
+                                        textTransform: "capitalize",
+                                    }}
+                                >
+                                    {side[0].toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+                    </Row>
+                </>
+            )}
+        </PanelSection>
+    );
+}
+
 
 function CellFlexPanel({
     cell,
@@ -720,7 +865,6 @@ function CellFlexPanel({
     );
 }
 
-// â”€â”€ Logo Widget Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function LogoWidgetPanel({
     widget,
@@ -812,7 +956,7 @@ function LogoWidgetPanel({
     );
 }
 
-// â”€â”€ TextLabel Rich Editor Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ TextLabel Rich Editor Panel â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function ToggleBtn({
     active,
@@ -1018,6 +1162,23 @@ function TextLabelPanel({
 
 // -- Widget Fields & Layout Panel ---------------------------------------------
 
+const DOCUMENT_INFO_FIELDS: Array<{ key: string; label: string }> = [
+    { key: "title", label: "Document Title (INVOICE/ESTIMATE/RECEIPT)" },
+    { key: "number", label: "Number (#)" },
+    { key: "date", label: "Date / Issue Date" },
+    { key: "dueDate", label: "Due Date (invoice)" },
+    { key: "expiryDate", label: "Expiry Date (estimate)" },
+    { key: "terms", label: "Terms (invoice)" },
+    { key: "poNumber", label: "PO Number" },
+    { key: "projectName", label: "Project" },
+    { key: "reference", label: "Reference" },
+    { key: "placeOfSupply", label: "Place of Supply (invoice)" },
+    { key: "paymentDate", label: "Payment Date (receipt)" },
+    { key: "paymentMethod", label: "Payment Method (receipt)" },
+    { key: "transactionId", label: "Transaction ID (receipt)" },
+    { key: "relatedInvoiceNumber", label: "Related Invoice # (receipt)" },
+];
+
 const WIDGET_FIELDS: Partial<Record<string, Array<{ key: string; label: string }>>> = {
     companyDetails: [
         { key: "name", label: "Name" },
@@ -1043,36 +1204,36 @@ const WIDGET_FIELDS: Partial<Record<string, Array<{ key: string; label: string }
         { key: "label", label: '"Ship To" heading' },
         { key: "address", label: "Address" },
     ],
-    invoiceDetails: [
-        { key: "title", label: "\"INVOICE\" title" },
-        { key: "number", label: "Invoice #" },
-        { key: "date", label: "Date" },
-        { key: "dueDate", label: "Due Date" },
-        { key: "terms", label: "Terms" },
-        { key: "poNumber", label: "PO Number" },
-        { key: "projectName", label: "Project" },
-        { key: "reference", label: "Reference" },
-        { key: "placeOfSupply", label: "Place of Supply" },
-    ],
-    estimateDetails: [
-        { key: "title", label: "\"ESTIMATE\" title" },
-        { key: "number", label: "Estimate #" },
-        { key: "date", label: "Date" },
-        { key: "expiryDate", label: "Expiry Date" },
-        { key: "reference", label: "Reference" },
-        { key: "poNumber", label: "PO Number" },
-        { key: "projectName", label: "Project" },
-    ],
-    receiptDetails: [
-        { key: "title", label: "\"RECEIPT\" title" },
-        { key: "number", label: "Receipt #" },
-        { key: "issueDate", label: "Issue Date" },
-        { key: "paymentDate", label: "Payment Date" },
-        { key: "paymentMethod", label: "Payment Method" },
-        { key: "transactionId", label: "Transaction ID" },
-        { key: "relatedInvoiceNumber", label: "Related Invoice #" },
-    ],
+    documentInfo: DOCUMENT_INFO_FIELDS,
+    invoiceDetails: DOCUMENT_INFO_FIELDS,
+    estimateDetails: DOCUMENT_INFO_FIELDS,
+    receiptDetails: DOCUMENT_INFO_FIELDS,
 };
+
+function DocumentInfoPanel({
+    widget,
+    onUpdateConfig,
+}: {
+    widget: TemplateWidget;
+    onUpdateConfig: (patch: Partial<Pick<TemplateWidget, "config">>) => void;
+}) {
+    const config = widget.config ?? {};
+    const docType = (config.docType as string | undefined) ?? "";
+    return (
+        <PanelSection title="Document Type">
+            <SelectInput
+                value={docType}
+                onChange={(v) => onUpdateConfig({ config: { ...config, docType: v || undefined } })}
+                options={[
+                    { value: "", label: "Auto (from template)" },
+                    { value: "invoice", label: "Invoice" },
+                    { value: "estimate", label: "Estimate" },
+                    { value: "receipt", label: "Receipt" },
+                ]}
+            />
+        </PanelSection>
+    );
+}
 
 function FieldsConfigPanel({
     widget,
@@ -1187,7 +1348,201 @@ function FieldsConfigPanel({
     );
 }
 
-// â”€â”€ Widget Config Panel (placement + delete) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Totals Block Panel --
+
+const TOTALS_ROWS: Array<{ key: string; label: string }> = [
+    { key: "subTotal",    label: "Sub Total" },
+    { key: "discount",    label: "Discount" },
+    { key: "tax1",        label: "Tax 1" },
+    { key: "tax2",        label: "Tax 2" },
+    { key: "shipping",    label: "Shipping" },
+    { key: "adjustment",  label: "Adjustment" },
+    { key: "total",       label: "Total" },
+    { key: "amountPaid",  label: "Amount Paid" },
+    { key: "balanceDue",  label: "Balance Due" },
+];
+
+const DEFAULT_TOTALS_SHOW = ["subTotal", "tax1", "total", "balanceDue"];
+
+function TotalsBlockPanel({
+    widget,
+    onUpdateConfig,
+}: {
+    widget: TemplateWidget;
+    onUpdateConfig: (patch: Partial<Pick<TemplateWidget, "config">>) => void;
+}) {
+    const config = widget.config ?? {};
+    const show: string[] = (config.show as string[] | undefined) ?? DEFAULT_TOTALS_SHOW;
+    const align: string = (config.align as string | undefined) ?? "right";
+    const showDivider: boolean = (config.divider as boolean | undefined) ?? true;
+    const dividerColor: string = (config.dividerColor as string | undefined) ?? "#e5e7eb";
+
+    function toggleRow(key: string) {
+        const next = show.includes(key)
+            ? show.filter((k) => k !== key)
+            : [...show, key];
+        const ordered = TOTALS_ROWS.map((r) => r.key).filter((k) => next.includes(k));
+        onUpdateConfig({ config: { ...config, show: ordered } });
+    }
+
+    function setAlign(v: string) {
+        onUpdateConfig({ config: { ...config, align: v } });
+    }
+
+    function setDivider(v: boolean) {
+        onUpdateConfig({ config: { ...config, divider: v } });
+    }
+
+    function setDividerColor(v: string) {
+        onUpdateConfig({ config: { ...config, dividerColor: v } });
+    }
+
+    const alignOptions = [
+        { value: "left",   label: "\u2190 Left" },
+        { value: "center", label: "\u2194 Center" },
+        { value: "right",  label: "\u2192 Right" },
+    ];
+
+    return (
+        <>
+            <PanelSection title="Alignment">
+                <div style={{ display: "flex", gap: 4 }}>
+                    {alignOptions.map((opt) => (
+                        <button
+                            key={opt.value}
+                            onClick={() => setAlign(opt.value)}
+                            style={{
+                                flex: 1,
+                                padding: "5px 4px",
+                                fontSize: 11,
+                                fontWeight: align === opt.value ? 700 : 500,
+                                color: align === opt.value ? "#4f46e5" : "#64748b",
+                                background: align === opt.value ? "#ede9fe" : "white",
+                                border: `1px solid ${align === opt.value ? "#c7d2fe" : "#d1d5db"}`,
+                                borderRadius: 5,
+                                cursor: "pointer",
+                            }}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            </PanelSection>
+
+            <PanelSection title="Row Divider">
+                <label
+                    style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, cursor: "pointer", marginBottom: 8 }}
+                >
+                    <input
+                        type="checkbox"
+                        checked={showDivider}
+                        onChange={(e) => setDivider(e.target.checked)}
+                        style={{ accentColor: "#4f46e5" }}
+                    />
+                    Show divider lines
+                </label>
+                {showDivider && (
+                    <ColorInput
+                        label="Color"
+                        value={dividerColor}
+                        onChange={setDividerColor}
+                    />
+                )}
+            </PanelSection>
+
+            <PanelSection title="Visible Rows">
+                {TOTALS_ROWS.map(({ key, label }) => (
+                    <label
+                        key={key}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 7,
+                            marginBottom: 5,
+                            cursor: "pointer",
+                            fontSize: 12,
+                            color: "#374151",
+                        }}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={show.includes(key)}
+                            onChange={() => toggleRow(key)}
+                            style={{ accentColor: "#4f46e5" }}
+                        />
+                        {label}
+                    </label>
+                ))}
+            </PanelSection>
+        </>
+    );
+}
+
+// -- Widget Styles Panel (text color, font size, font weight) --
+
+function WidgetStylesPanel({
+    widget,
+    onUpdateStyles,
+}: {
+    widget: TemplateWidget;
+    onUpdateStyles: (styles: Record<string, string>) => void;
+}) {
+    const styles = (widget.styles ?? {}) as Record<string, string>;
+
+    function set(key: string, value: string) {
+        onUpdateStyles({ ...styles, [key]: value });
+    }
+
+    function clear(key: string) {
+        const next = { ...styles };
+        delete next[key];
+        onUpdateStyles(next);
+    }
+
+    return (
+        <PanelSection title="Text Style">
+            <ColorInput
+                label="Color"
+                value={styles.color ?? "#000000"}
+                onChange={(v) => set("color", v)}
+            />
+            <Row label="Font Size">
+                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <NumberInput
+                        value={styles.fontSize ? parseInt(styles.fontSize) : 14}
+                        onChange={(v) => set("fontSize", `${v}px`)}
+                        min={8}
+                        max={72}
+                    />
+                    {styles.fontSize && (
+                        <button
+                            onClick={() => clear("fontSize")}
+                            style={{ fontSize: 10, color: "#9ca3af", background: "none", border: "none", cursor: "pointer", padding: "0 2px" }}
+                            title="Reset"
+                        >
+                            reset
+                        </button>
+                    )}
+                </div>
+            </Row>
+            <Row label="Weight">
+                <SelectInput
+                    value={styles.fontWeight ?? ""}
+                    onChange={(v) => v ? set("fontWeight", v) : clear("fontWeight")}
+                    options={[
+                        { value: "", label: "Default" },
+                        { value: "400", label: "Normal" },
+                        { value: "500", label: "Medium" },
+                        { value: "600", label: "Semibold" },
+                        { value: "700", label: "Bold" },
+                    ]}
+                />
+            </Row>
+        </PanelSection>
+    );
+}
+
+// -- Widget Config Panel (placement + delete) --
 
 function WidgetConfigPanel({
     widget,
@@ -1274,7 +1629,7 @@ function WidgetConfigPanel({
     );
 }
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function resolveFocusedSection(
     template: TemplateV2,
@@ -1321,7 +1676,7 @@ function findCellContainingWidget(
     return null;
 }
 
-// â”€â”€ Tab Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Tab Button â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function TabBtn({
     active,
@@ -1357,7 +1712,153 @@ function TabBtn({
     );
 }
 
-// â”€â”€ Main PropertiesPanel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Main PropertiesPanel â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+
+// Section Watermark Panel
+
+function SectionWatermarkPanel({
+    watermark,
+    onChange,
+}: {
+    watermark?: WatermarkConfig;
+    onChange: (cfg: WatermarkConfig | null) => void;
+}) {
+    const has = !!watermark;
+    return (
+        <PanelSection title="Section Watermark">
+            <Row label="Enabled">
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                    <input
+                        type="checkbox"
+                        checked={has}
+                        onChange={(e) =>
+                            onChange(e.target.checked ? { text: "DRAFT", opacity: 0.08 } : null)
+                        }
+                    />
+                    <span style={{ fontSize: 11, color: "#374151" }}>Show watermark</span>
+                </label>
+            </Row>
+            {has && watermark && (
+                <>
+                    <Row label="Text">
+                        <input
+                            value={watermark.text}
+                            onChange={(e) => onChange({ ...watermark, text: e.target.value })}
+                            style={{ width: "100%", padding: "4px 6px", border: "1px solid #d1d5db", borderRadius: 5, fontSize: 12, boxSizing: "border-box" as const }}
+                        />
+                    </Row>
+                    <Row label="Opacity">
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <input
+                                type="range" min={1} max={50}
+                                value={Math.round((watermark.opacity ?? 0.08) * 100)}
+                                onChange={(e) => onChange({ ...watermark, opacity: Number(e.target.value) / 100 })}
+                                style={{ flex: 1 }}
+                            />
+                            <span style={{ fontSize: 11, color: "#64748b", minWidth: 30 }}>
+                                {Math.round((watermark.opacity ?? 0.08) * 100)}%
+                            </span>
+                        </div>
+                    </Row>
+                    <Row label="Rotation">
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <input
+                                type="range" min={-90} max={90}
+                                value={watermark.rotate ?? -30}
+                                onChange={(e) => onChange({ ...watermark, rotate: Number(e.target.value) })}
+                                style={{ flex: 1 }}
+                            />
+                            <span style={{ fontSize: 11, color: "#64748b", minWidth: 30 }}>
+                                {watermark.rotate ?? -30}deg
+                            </span>
+                        </div>
+                    </Row>
+                    <button
+                        onClick={() => onChange(null)}
+                        style={{ marginTop: 4, fontSize: 11, color: "#ef4444", background: "none", border: "1px solid #fca5a5", borderRadius: 5, padding: "3px 8px", cursor: "pointer" }}
+                    >
+                        Remove Watermark
+                    </button>
+                </>
+            )}
+        </PanelSection>
+    );
+}
+
+// Page Watermark Panel
+
+function PageWatermarkPanel({
+    pageWatermarks,
+    onChange,
+}: {
+    pageWatermarks?: { background?: WatermarkConfig; foreground?: WatermarkConfig };
+    onChange: (layer: "background" | "foreground", cfg: WatermarkConfig | null) => void;
+}) {
+    return (
+        <PanelSection title="Page Watermarks">
+            {(["background", "foreground"] as const).map((layer) => {
+                const wm = pageWatermarks?.[layer];
+                const has = !!wm;
+                return (
+                    <div key={layer} style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginBottom: 4, textTransform: "capitalize" as const }}>
+                            {layer}
+                        </div>
+                        <Row label="Enabled">
+                            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                                <input
+                                    type="checkbox"
+                                    checked={has}
+                                    onChange={(e) =>
+                                        onChange(layer, e.target.checked ? { text: "DRAFT", opacity: 0.08 } : null)
+                                    }
+                                />
+                                <span style={{ fontSize: 11, color: "#374151" }}>Show</span>
+                            </label>
+                        </Row>
+                        {has && wm && (
+                            <>
+                                <Row label="Text">
+                                    <input
+                                        value={wm.text}
+                                        onChange={(e) => onChange(layer, { ...wm, text: e.target.value })}
+                                        style={{ width: "100%", padding: "4px 6px", border: "1px solid #d1d5db", borderRadius: 5, fontSize: 12, boxSizing: "border-box" as const }}
+                                    />
+                                </Row>
+                                <Row label="Opacity">
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                        <input
+                                            type="range" min={1} max={50}
+                                            value={Math.round((wm.opacity ?? 0.08) * 100)}
+                                            onChange={(e) => onChange(layer, { ...wm, opacity: Number(e.target.value) / 100 })}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <span style={{ fontSize: 11, color: "#64748b", minWidth: 30 }}>
+                                            {Math.round((wm.opacity ?? 0.08) * 100)}%
+                                        </span>
+                                    </div>
+                                </Row>
+                                <Row label="Rotation">
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                        <input
+                                            type="range" min={-90} max={90}
+                                            value={wm.rotate ?? -30}
+                                            onChange={(e) => onChange(layer, { ...wm, rotate: Number(e.target.value) })}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <span style={{ fontSize: 11, color: "#64748b", minWidth: 30 }}>
+                                            {wm.rotate ?? -30}deg
+                                        </span>
+                                    </div>
+                                </Row>
+                            </>
+                        )}
+                    </div>
+                );
+            })}
+        </PanelSection>
+    );
+}
 
 interface PropsPP {
     template: TemplateV2;
@@ -1391,7 +1892,7 @@ interface PropsPP {
         patch: Partial<
             Pick<
                 TemplateV2,
-                "pageSize" | "orientation" | "pagePadding" | "accentBorders"
+                "pageSize" | "orientation" | "pagePadding" | "accentBorders" | "theme" | "documentType"
             >
         >,
     ) => void;
@@ -1403,6 +1904,9 @@ interface PropsPP {
     ) => void;
     onUpdateCellFlex: (cellId: string, flex: CellFlex | undefined) => void;
     onUpdateCellSpan?: (cellId: string, colSpan: number, rowSpan: number) => void;
+    onSetSectionWatermark?: (target: SectionTarget, config: WatermarkConfig | null) => void;
+    onSetPageWatermark?: (layer: "background" | "foreground", config: WatermarkConfig | null) => void;
+    onUpdateSectionBorder?: (target: SectionTarget, border: SectionBorder | null) => void;
 }
 
 export function PropertiesPanel({
@@ -1420,6 +1924,9 @@ export function PropertiesPanel({
     onUpdateWidgetConfig,
     onUpdateCellFlex,
     onUpdateCellSpan,
+    onSetSectionWatermark,
+    onSetPageWatermark,
+    onUpdateSectionBorder,
 }: PropsPP) {
     const [_pageMode, setPageMode] = useState(false);
     // Auto-exit page mode when a widget or cell is selected
@@ -1515,13 +2022,21 @@ export function PropertiesPanel({
             {/* Scrollable content */}
             <div style={{ padding: "10px 12px", flex: 1, overflowY: "auto" }}>
                 {pageMode ? (
-                    /* â”€â”€ PAGE tab â”€â”€ */
-                    <PageSettingsPanel
-                        template={template}
-                        onUpdateTemplate={onUpdateTemplate}
-                    />
+                    /* ── PAGE tab ── */
+                    <>
+                        <PageSettingsPanel
+                            template={template}
+                            onUpdateTemplate={onUpdateTemplate}
+                        />
+                        {onSetPageWatermark && (
+                            <PageWatermarkPanel
+                                pageWatermarks={template.pageWatermarks}
+                                onChange={onSetPageWatermark}
+                            />
+                        )}
+                    </>
                 ) : (
-                    /* â”€â”€ SECTION tab (context-sensitive) â”€â”€ */
+                    /* â"€â"€ SECTION tab (context-sensitive) â"€â"€ */
                     <>
                         {/* Cell selected â†’ flex layout controls */}
                         {selectedType === "cell" && selectedCell && (
@@ -1549,6 +2064,40 @@ export function PropertiesPanel({
                                 )}
                                 {selectedWidget.type === "textLabel" && (
                                     <TextLabelPanel
+                                        widget={selectedWidget}
+                                        onUpdateConfig={(patch) =>
+                                            onUpdateWidgetConfig(
+                                                selectedWidget!.id,
+                                                patch,
+                                            )
+                                        }
+                                    />
+                                )}
+                                {selectedWidget.type === "totalsBlock" && (
+                                    <TotalsBlockPanel
+                                        widget={selectedWidget}
+                                        onUpdateConfig={(patch) =>
+                                            onUpdateWidgetConfig(
+                                                selectedWidget!.id,
+                                                patch,
+                                            )
+                                        }
+                                    />
+                                )}
+                                {selectedWidget.type !== "logo" &&
+                                    selectedWidget.type !== "textLabel" && (
+                                        <WidgetStylesPanel
+                                            widget={selectedWidget}
+                                            onUpdateStyles={(s) =>
+                                                onUpdateWidgetConfig(
+                                                    selectedWidget!.id,
+                                                    { styles: s },
+                                                )
+                                            }
+                                        />
+                                    )}
+                                {selectedWidget.type === "documentInfo" && (
+                                    <DocumentInfoPanel
                                         widget={selectedWidget}
                                         onUpdateConfig={(patch) =>
                                             onUpdateWidgetConfig(
@@ -1607,38 +2156,51 @@ export function PropertiesPanel({
                         {/* Nothing / section selected â†’ grid config */}
                         {(!selectedType || selectedType === "section") &&
                             section && (
-                                <GridConfigPanel
-                                    section={section}
-                                    isHeaderOrFooter={isHF}
-                                    onUpdate={(patch) =>
-                                        onUpdateGridConfig(target, patch)
-                                    }
-                                    onUpdateHeight={
-                                        isHF
-                                            ? (h) =>
-                                                  onUpdateSectionHeight(
-                                                      focusedSectionId as
-                                                          | "header"
-                                                          | "footer",
-                                                      h,
-                                                  )
-                                            : undefined
-                                    }
-                                    onUpdateBg={(bg) =>
-                                        onUpdateSectionBg(target, bg)
-                                    }
-                                    onUpdateDividerColor={
-                                        isHF
-                                            ? (color) =>
-                                                  onUpdateSectionDividerColor(
-                                                      focusedSectionId as
-                                                          | "header"
-                                                          | "footer",
-                                                      color,
-                                                  )
-                                            : undefined
-                                    }
-                                />
+                                <>
+                                    <GridConfigPanel
+                                        section={section}
+                                        isHeaderOrFooter={isHF}
+                                        onUpdate={(patch) =>
+                                            onUpdateGridConfig(target, patch)
+                                        }
+                                        onUpdateHeight={
+                                            isHF
+                                                ? (h) =>
+                                                      onUpdateSectionHeight(
+                                                          focusedSectionId as
+                                                              | "header"
+                                                              | "footer",
+                                                          h,
+                                                      )
+                                                : undefined
+                                        }
+                                        onUpdateBg={(bg) =>
+                                            onUpdateSectionBg(target, bg)
+                                        }
+                                        onUpdateDividerColor={
+                                            isHF
+                                                ? (color) =>
+                                                      onUpdateSectionDividerColor(
+                                                          focusedSectionId as
+                                                              | "header"
+                                                              | "footer",
+                                                          color,
+                                                      )
+                                                : undefined
+                                        }
+                                        onUpdateBorder={
+                                            onUpdateSectionBorder
+                                                ? (b) => onUpdateSectionBorder(target, b)
+                                                : undefined
+                                        }
+                                    />
+                                    {onSetSectionWatermark && (
+                                        <SectionWatermarkPanel
+                                            watermark={section.watermark}
+                                            onChange={(cfg) => onSetSectionWatermark(target, cfg)}
+                                        />
+                                    )}
+                                </>
                             )}
                     </>
                 )}

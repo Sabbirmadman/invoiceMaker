@@ -20,6 +20,8 @@ import type {
     CellFlex,
     PagePadding,
     PageAccentBorders,
+    WatermarkConfig,
+    SectionBorder,
 } from "@/types/templateV2";
 import {
     makeWidget,
@@ -96,7 +98,7 @@ export interface UseTemplateEditorReturn {
         patch: Partial<
             Pick<
                 TemplateV2,
-                "pageSize" | "orientation" | "pagePadding" | "accentBorders" | "pageBackground"
+                "pageSize" | "orientation" | "pagePadding" | "accentBorders" | "pageBackground" | "theme" | "documentType"
             >
         >,
     ) => void;
@@ -104,6 +106,11 @@ export interface UseTemplateEditorReturn {
     updateCellFlex: (cellId: string, flex: CellFlex | undefined) => void;
     // Cell span
     updateCellSpan: (cellId: string, colSpan: number, rowSpan: number) => void;
+    // Watermarks
+    setSectionWatermark: (target: SectionTarget, config: WatermarkConfig | null) => void;
+    setPageWatermark: (layer: "background" | "foreground", config: WatermarkConfig | null) => void;
+    // Border
+    updateSectionBorder: (target: SectionTarget, border: SectionBorder | null) => void;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -511,7 +518,8 @@ export function useTemplateEditor(
                     upsertCell(section, { ...cell, children: newChildren }),
                 );
             }
-            push(t);
+            // Prune the cell that was vacated so its position becomes an empty drop target again
+            push(pruneEmptyCellsInTemplate(t));
         },
         [template, push],
     );
@@ -590,7 +598,7 @@ export function useTemplateEditor(
             patch: Partial<
                 Pick<
                     TemplateV2,
-                    "pageSize" | "orientation" | "pagePadding" | "accentBorders" | "pageBackground"
+                    "pageSize" | "orientation" | "pagePadding" | "accentBorders" | "pageBackground" | "theme" | "documentType"
                 >
             >,
         ) => {
@@ -650,6 +658,47 @@ export function useTemplateEditor(
         },
         [template, push],
     );
+    // ── Watermarks ────────────────────────────────────────────────────────────
+
+    const setSectionWatermark = useCallback(
+        (target: SectionTarget, config: WatermarkConfig | null) => {
+            const s = resolveSection(template, target);
+            if (!s) return;
+            const updated = config ? { ...s, watermark: config } : (() => { const { watermark: _w, ...rest } = s; return rest as SectionGridV2; })();
+            push(applyToSection(template, target, updated));
+        },
+        [template, push],
+    );
+
+    const setPageWatermark = useCallback(
+        (layer: "background" | "foreground", config: WatermarkConfig | null) => {
+            const existing = template.pageWatermarks ?? {};
+            if (config === null) {
+                const { [layer === "background" ? "background" : "foreground"]: _removed, ...rest } = existing;
+                push({ ...template, pageWatermarks: Object.keys(rest).length ? rest : undefined });
+            } else {
+                push({ ...template, pageWatermarks: { ...existing, [layer]: config } });
+            }
+        },
+        [template, push],
+    );
+
+    // ── Section border ────────────────────────────────────────────────────────
+
+    const updateSectionBorder = useCallback(
+        (target: SectionTarget, border: SectionBorder | null) => {
+            const s = resolveSection(template, target);
+            if (!s) return;
+            if (border === null) {
+                const { border: _b, ...rest } = s;
+                push(applyToSection(template, target, rest as SectionGridV2));
+            } else {
+                push(applyToSection(template, target, { ...s, border }));
+            }
+        },
+        [template, push],
+    );
+
     // ── Visibility ───────────────────────────────────────────────────────────
 
     const setSectionVisible = useCallback(
@@ -682,5 +731,8 @@ export function useTemplateEditor(
         updateCellFlex,
         updateCellSpan,
         setSectionVisible,
+        setSectionWatermark,
+        setPageWatermark,
+        updateSectionBorder,
     };
 }

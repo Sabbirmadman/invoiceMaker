@@ -10,6 +10,7 @@ export type ElementType =
     | "invoiceDetails"
     | "estimateDetails"
     | "receiptDetails"
+    | "documentInfo"
     | "itemList"
     | "totalsBlock"
     | "notes"

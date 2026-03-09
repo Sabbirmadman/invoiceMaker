@@ -1,3 +1,4 @@
+import React from "react";
 import type { TemplateElement } from "@/types/template";
 import type { TotalsConfig, TotalsResult } from "@/types/document";
 import { formatCurrency } from "@/services/calculations";
@@ -26,6 +27,9 @@ export function TotalsBlockElement({ element, totals, config }: Props) {
         "total",
         "balanceDue",
     ];
+    const align = (element.config?.align as string | undefined) ?? "right";
+    const showDivider = (element.config?.divider as boolean | undefined) ?? true;
+    const dividerColor = (element.config?.dividerColor as string | undefined) ?? "#e5e7eb";
     const currency = config.currency || "USD";
 
     const rows: Array<{
@@ -83,17 +87,21 @@ export function TotalsBlockElement({ element, totals, config }: Props) {
         },
     ];
 
+    const justifyClass =
+        align === "left" ? "justify-start" :
+        align === "center" ? "justify-center" :
+        "justify-end";
+
     return (
-        <div className="flex justify-end mt-4">
+        <div className={`flex ${justifyClass}`} style={element.styles as React.CSSProperties}>
             <div className="min-w-64 text-sm">
                 {rows
                     .filter((r) => show.includes(r.key))
                     .map((row) => (
                         <div
                             key={row.key}
-                            className={`flex justify-between gap-8 py-1 border-b last:border-b-0 ${
-                                row.bold ? "font-semibold text-base" : ""
-                            }`}
+                            className={`flex justify-between gap-8 py-1 ${row.bold ? "font-semibold text-base" : ""}`}
+                            style={showDivider ? { borderBottom: `1px solid ${dividerColor}` } : undefined}
                         >
                             <span>{row.label}</span>
                             <span>{row.value}</span>

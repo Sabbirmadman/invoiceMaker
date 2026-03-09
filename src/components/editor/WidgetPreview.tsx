@@ -13,9 +13,7 @@ import { LogoElement } from "@/components/elements/LogoElement";
 import { CompanyDetailsElement } from "@/components/elements/CompanyDetailsElement";
 import { BillToElement } from "@/components/elements/BillToElement";
 import { ShipToElement } from "@/components/elements/ShipToElement";
-import { InvoiceDetailsElement } from "@/components/elements/InvoiceDetailsElement";
-import { EstimateDetailsElement } from "@/components/elements/EstimateDetailsElement";
-import { ReceiptDetailsElement } from "@/components/elements/ReceiptDetailsElement";
+import { DocumentInfoElement } from "@/components/elements/DocumentInfoElement";
 import { ItemListElement } from "@/components/elements/ItemListElement";
 import { TotalsBlockElement } from "@/components/elements/TotalsBlockElement";
 import { NotesElement } from "@/components/elements/NotesElement";
@@ -61,6 +59,8 @@ const DUMMY_CLIENT = {
     country: "USA",
     phone: "+1 (555) 111-1111",
     email: "client@example.com",
+    taxId: "",
+    shippingAddress: "789 Shipping Blvd\nLos Angeles, CA 90001",
 };
 
 const DUMMY_INVOICE_META = {
@@ -133,26 +133,14 @@ export function WidgetPreview({ type, label, description }: Props) {
             content = <ShipToElement element={DUMMY_EL} client={DUMMY_CLIENT} />;
             break;
         case "invoiceDetails":
-            content = (
-                <InvoiceDetailsElement
-                    element={{ ...DUMMY_EL, config: { fields: ["number", "date", "dueDate"], contentCols: 1 } }}
-                    meta={DUMMY_INVOICE_META}
-                />
-            );
-            break;
         case "estimateDetails":
-            content = (
-                <EstimateDetailsElement
-                    element={{ ...DUMMY_EL, config: { fields: ["number", "date", "expiryDate"], contentCols: 1 } }}
-                    meta={{ ...DUMMY_INVOICE_META, type: "estimate" as const, expiryDate: "" }}
-                />
-            );
-            break;
         case "receiptDetails":
+        case "documentInfo":
             content = (
-                <ReceiptDetailsElement
-                    element={{ ...DUMMY_EL, config: { fields: ["number", "date"], contentCols: 1 } }}
-                    meta={{ ...DUMMY_INVOICE_META, type: "receipt" as const, paymentMethod: "Bank Transfer" }}
+                <DocumentInfoElement
+                    element={{ ...DUMMY_EL, config: { fields: ["number", "date", "dueDate"] } }}
+                    meta={DUMMY_INVOICE_META}
+                    docType="invoice"
                 />
             );
             break;

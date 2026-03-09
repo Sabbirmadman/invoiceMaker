@@ -9,11 +9,12 @@
  */
 import React from "react";
 import { Settings } from "lucide-react";
-import type { SectionGridV2, TemplateGridCell } from "@/types/templateV2";
+import type { SectionGridV2 } from "@/types/templateV2";
 import type { StoredDocument, TotalsResult } from "@/types/document";
 import { useEditorSelection } from "@/components/editor/EditorSelectionContext";
 import { useDrag } from "@/components/editor/DragContext";
 import { EditorCell } from "./EditorCell";
+import { WatermarkElement } from "@/components/elements/WatermarkElement";
 
 interface Props {
     section: SectionGridV2;
@@ -64,16 +65,37 @@ export function EditorGrid({
         }
     }
 
+    // Per-side padding (fall back to uniform `grid.padding` if unset)
+    const pt = grid.paddingTop ?? grid.padding;
+    const pr = grid.paddingRight ?? grid.padding;
+    const pb = grid.paddingBottom ?? grid.padding;
+    const pl = grid.paddingLeft ?? grid.padding;
+
+    // Border style from section.border
+    const b = section.border;
+    const borderStyle: React.CSSProperties = b
+        ? {
+              borderTop: b.top ? `${b.width}px ${b.style} ${b.color}` : undefined,
+              borderRight: b.right ? `${b.width}px ${b.style} ${b.color}` : undefined,
+              borderBottom: b.bottom ? `${b.width}px ${b.style} ${b.color}` : undefined,
+              borderLeft: b.left ? `${b.width}px ${b.style} ${b.color}` : undefined,
+          }
+        : {};
+
     const gridStyle: React.CSSProperties = {
         display: "grid",
         gridTemplateColumns: colTemplate,
         gridTemplateRows: rowTemplate,
         gap: `${grid.rowGap}px ${grid.colGap}px`,
-        padding: grid.padding,
+        paddingTop: pt,
+        paddingRight: pr,
+        paddingBottom: pb,
+        paddingLeft: pl,
         width: "100%",
         height: section.height !== undefined ? section.height : "auto",
         position: "relative",
         boxSizing: "border-box",
+        ...borderStyle,
     };
 
     // Background styles
@@ -94,6 +116,11 @@ export function EditorGrid({
             selectNode(section.id, "section");
         }
     }
+
+    // Build a fake TemplateElement to pass to WatermarkElement
+    const sectionWatermarkEl = section.watermark
+        ? { id: `wm_${section.id}`, type: "watermark" as const, zIndex: 20, config: section.watermark as unknown as Record<string, unknown> }
+        : null;
 
     return (
         <div style={{ position: "relative", ...bgStyle }}>
@@ -185,6 +212,11 @@ export function EditorGrid({
                         );
                     })}
             </div>
+
+            {/* Section-level watermark overlay */}
+            {sectionWatermarkEl && (
+                <WatermarkElement element={sectionWatermarkEl} />
+            )}
         </div>
     );
 }

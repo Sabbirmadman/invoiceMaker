@@ -14,6 +14,15 @@ import type { ElementType, Theme } from "./template";
 // ── Re-export ElementType so consumers only need this file ──────────────────
 export type { ElementType, Theme };
 
+// ── Watermark config ─────────────────────────────────────────────────────────
+
+export interface WatermarkConfig {
+    text: string;
+    opacity?: number; // default 0.08
+    rotate?: number;  // default -30 (degrees)
+    color?: string;   // default "currentColor"
+}
+
 // ── Page-level layout types ──────────────────────────────────────────────────
 
 export interface PagePadding {
@@ -94,7 +103,23 @@ export interface GridConfig {
     rowHeights: string[];
     colGap: number; // px
     rowGap: number; // px
-    padding: number; // px, uniform for now
+    /** Uniform padding (used as fallback when per-side values are absent) */
+    padding: number; // px
+    /** Per-side padding overrides — each defaults to `padding` if unset */
+    paddingTop?: number;
+    paddingRight?: number;
+    paddingBottom?: number;
+    paddingLeft?: number;
+}
+
+export interface SectionBorder {
+    color: string;
+    width: number;
+    style: "solid" | "dashed" | "dotted";
+    top: boolean;
+    right: boolean;
+    bottom: boolean;
+    left: boolean;
 }
 
 // ── Grid section ─────────────────────────────────────────────────────────────
@@ -118,6 +143,10 @@ export interface SectionGridV2 {
     };
     /** Color of the divider line at the bottom of header / top of footer */
     dividerColor?: string;
+    /** Optional watermark overlaid on this section */
+    watermark?: WatermarkConfig;
+    /** Optional border around the section */
+    border?: SectionBorder;
 }
 
 // ── Body section — multiple independent grids stacked vertically ──────────────
@@ -147,6 +176,11 @@ export interface TemplateV2 {
     accentBorders?: PageAccentBorders;
     /** Optional background color for the entire page */
     pageBackground?: string;
+    /** Optional page-level watermarks rendered behind or in front of all content */
+    pageWatermarks?: {
+        background?: WatermarkConfig;
+        foreground?: WatermarkConfig;
+    };
 }
 
 // ── Factory helpers ──────────────────────────────────────────────────────────

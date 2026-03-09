@@ -7,7 +7,7 @@
  * Layout:
  *   [Widget Palette] | [Canvas: header + body + footer] | [Properties Panel]
  */
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
     ArrowLeft,
@@ -41,7 +41,11 @@ import { DragProvider, useDrag } from "@/components/editor/DragContext";
 import { WidgetPalette } from "@/components/editor/WidgetPalette";
 import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
 import { EditorGrid } from "@/components/canvas/EditorGrid";
+import { WatermarkPlacementDialog } from "@/components/editor/WatermarkPlacementDialog";
+import type { WatermarkScope } from "@/components/editor/WatermarkPlacementDialog";
+import { WatermarkElement } from "@/components/elements/WatermarkElement";
 import { FillModeProvider } from "@/components/fill-mode/FillModeContext";
+import type { WatermarkConfig } from "@/types/templateV2";
 
 import { calculateTotals } from "@/services/calculations";
 import { PAGE_DIMENSIONS } from "@/types/common";
@@ -180,6 +184,24 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
     const [focusedSection, setFocusedSection] = useState<string>(
         template.body.grids[0]?.id ?? "body",
     );
+    const [showWatermarkDialog, setShowWatermarkDialog] = useState(false);
+
+    const handleWatermarkPlace = useCallback((scope: WatermarkScope, config: WatermarkConfig) => {
+        setShowWatermarkDialog(false);
+        if (scope === "cell") return; // user will drag normally
+        if (scope === "page-bg") {
+            editor.setPageWatermark("background", config);
+        } else if (scope === "page-fg") {
+            editor.setPageWatermark("foreground", config);
+        } else if (scope === "header") {
+            editor.setSectionWatermark("header", config);
+        } else if (scope === "footer") {
+            editor.setSectionWatermark("footer", config);
+        } else if (typeof scope === "object" && "bodyGridIndex" in scope) {
+            const grid = template.body.grids[scope.bodyGridIndex];
+            if (grid) editor.setSectionWatermark({ bodyGridId: grid.id }, config);
+        }
+    }, [editor, template.body.grids]);
 
     const dummyDoc = useMemo(() => makeDummyDoc(template), [template]);
     const totals = useMemo(
@@ -463,6 +485,8 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                                 const newId = editor.addBodyGrid();
                                 setFocusedSection(newId);
                             }}
+                            onWatermarkClick={() => setShowWatermarkDialog(true)}
+                            template={template}
                         />
                     )}
 
@@ -509,11 +533,11 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                                 transform: `scale(${zoom})`,
                                 background: template.pageBackground ?? "white",
                                 boxShadow: "0 4px 32px rgba(0,0,0,0.18)",
-
                                 borderRadius: 4,
                                 overflow: "hidden",
                                 display: "flex",
                                 flexDirection: "column",
+                                position: "relative",
                                 fontFamily: template.theme.fontFamily,
                                 color: template.theme.primaryColor,
                                 borderLeft: template.accentBorders?.left
@@ -790,6 +814,28 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                                     }}
                                 />
                             )}
+                            {/* Page-level watermark — background (z=1, behind content) */}
+                            {template.pageWatermarks?.background && (
+                                <WatermarkElement
+                                    element={{
+                                        id: "page_wm_bg",
+                                        type: "watermark",
+                                        zIndex: 1,
+                                        config: template.pageWatermarks.background as unknown as Record<string, unknown>,
+                                    }}
+                                />
+                            )}
+                            {/* Page-level watermark — foreground (z=200, in front of content) */}
+                            {template.pageWatermarks?.foreground && (
+                                <WatermarkElement
+                                    element={{
+                                        id: "page_wm_fg",
+                                        type: "watermark",
+                                        zIndex: 200,
+                                        config: template.pageWatermarks.foreground as unknown as Record<string, unknown>,
+                                    }}
+                                />
+                            )}
                         </div>
                         </div>
                     </div>
@@ -824,10 +870,22 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                             onUpdateSectionDividerColor={
                                 editor.updateSectionDividerColor
                             }
+                            onSetSectionWatermark={editor.setSectionWatermark}
+                            onSetPageWatermark={editor.setPageWatermark}
+                            onUpdateSectionBorder={editor.updateSectionBorder}
                         />
                     )}
                 </div>
             </div>
+
+            {/* Watermark placement dialog */}
+            {showWatermarkDialog && (
+                <WatermarkPlacementDialog
+                    bodyGridCount={template.body.grids.length}
+                    onConfirm={handleWatermarkPlace}
+                    onCancel={() => setShowWatermarkDialog(false)}
+                />
+            )}
         </FillModeProvider>
     );
 }

@@ -17,9 +17,7 @@ import { LogoElement } from "@/components/elements/LogoElement";
 import { CompanyDetailsElement } from "@/components/elements/CompanyDetailsElement";
 import { BillToElement } from "@/components/elements/BillToElement";
 import { ShipToElement } from "@/components/elements/ShipToElement";
-import { InvoiceDetailsElement } from "@/components/elements/InvoiceDetailsElement";
-import { EstimateDetailsElement } from "@/components/elements/EstimateDetailsElement";
-import { ReceiptDetailsElement } from "@/components/elements/ReceiptDetailsElement";
+import { DocumentInfoElement } from "@/components/elements/DocumentInfoElement";
 import { ItemListElement } from "@/components/elements/ItemListElement";
 import { TotalsBlockElement } from "@/components/elements/TotalsBlockElement";
 import { NotesElement } from "@/components/elements/NotesElement";
@@ -39,9 +37,10 @@ const WIDGET_META: Record<string, { label: string; description: string }> = {
     companyDetails:  { label: "Company",         description: "Company name, address, contact info" },
     billTo:          { label: "Bill To",         description: "Client billing address" },
     shipTo:          { label: "Ship To",         description: "Shipping address" },
-    invoiceDetails:  { label: "Invoice Info",    description: "Invoice number, date, due date" },
-    estimateDetails: { label: "Estimate Info",   description: "Estimate number, date, expiry date" },
-    receiptDetails:  { label: "Receipt Info",    description: "Receipt number, payment info" },
+    invoiceDetails:  { label: "Document Info",   description: "Invoice/Estimate/Receipt details" },
+    estimateDetails: { label: "Document Info",   description: "Invoice/Estimate/Receipt details" },
+    receiptDetails:  { label: "Document Info",   description: "Invoice/Estimate/Receipt details" },
+    documentInfo:    { label: "Document Info",   description: "Invoice / Estimate / Receipt details" },
     itemList:        { label: "Item Table",      description: "Line items — repeats on every page" },
     totalsBlock:     { label: "Totals",          description: "Subtotal, taxes, total, balance due" },
     notes:           { label: "Notes",           description: "Custom freeform notes text" },
@@ -141,18 +140,17 @@ export function WidgetRenderer({
             content = <ShipToElement element={el} client={data.client} />;
             break;
         case "invoiceDetails":
-            // In editor mode always show; in preview/fill only show for correct doc type
-            if (!editMode && meta.type !== "invoice") break;
-            content = <InvoiceDetailsElement element={el} meta={meta.type === "invoice" ? meta : { ...meta, type: "invoice" } as typeof meta} />;
-            break;
         case "estimateDetails":
-            if (!editMode && meta.type !== "estimate") break;
-            content = <EstimateDetailsElement element={el} meta={meta.type === "estimate" ? meta : { ...meta, type: "estimate" } as typeof meta} />;
-            break;
         case "receiptDetails":
-            if (!editMode && meta.type !== "receipt") break;
-            content = <ReceiptDetailsElement element={el} meta={meta.type === "receipt" ? meta : { ...meta, type: "receipt" } as typeof meta} />;
+        case "documentInfo": {
+            const docType =
+                widget.type === "invoiceDetails" ? "invoice" :
+                widget.type === "estimateDetails" ? "estimate" :
+                widget.type === "receiptDetails" ? "receipt" :
+                (el.config?.docType as import("@/types/common").DocumentType | undefined) ?? doc.documentType;
+            content = <DocumentInfoElement element={el} meta={data.meta} docType={docType} />;
             break;
+        }
         case "itemList":
             content = (
                 <ItemListElement
