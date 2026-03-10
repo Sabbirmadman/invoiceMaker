@@ -64,6 +64,9 @@ const COLUMN_ALIGN: Record<ColKey, string> = {
     amount: "text-right",
 };
 
+// Fixed height for every data row cell — keeps edit and preview heights identical.
+const CELL_H = "min-h-[28px]";
+
 
 export function ItemListElement({
     element,
@@ -111,7 +114,8 @@ export function ItemListElement({
                     className="flex w-full"
                     style={{ backgroundColor: headerBg, color: headerColor }}
                 >
-                    {fillMode && <div className="w-8 shrink-0" />}
+                    {/* Spacer always present so header columns align with data rows in both modes */}
+                    <div className="w-8 shrink-0" />
                     <div className="w-8 px-3 py-2 text-left font-medium shrink-0">
                         #
                     </div>
@@ -135,27 +139,30 @@ export function ItemListElement({
                     <div
                         key={item.id}
                         data-row-index={itemOffset + idx}
-                        className="flex w-full border-b items-start group"
+                        className="flex w-full border-b items-center group"
                         style={{
                             backgroundColor:
                                 idx % 2 === 1 ? altRowColor : "#ffffff",
                         }}
                     >
-                        {fillMode && (
+                        {/* Trash button in edit mode; invisible spacer in preview — keeps column positions identical */}
+                        {fillMode ? (
                             <button
                                 onClick={() => removeItem(idx)}
                                 className="w-8 px-1 py-2 text-muted-foreground hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                                 <Trash2 className="size-3" />
                             </button>
+                        ) : (
+                            <div className="w-8 shrink-0" />
                         )}
-                        <div className="w-8 px-3 py-2 text-muted-foreground shrink-0">
+                        <div className={`w-8 px-3 py-1 text-muted-foreground shrink-0 ${CELL_H} flex items-center`}>
                             {itemOffset + idx + 1}
                         </div>
                         {columns.map((col) => (
                             <div
                                 key={col}
-                                className={`flex-1 min-w-0 px-2 py-1 ${COLUMN_ALIGN[col]}`}
+                                className={`flex-1 min-w-0 px-2 ${CELL_H} flex items-center ${COLUMN_ALIGN[col]}`}
                             >
                                 {col !== "amount" && fillMode
                                     ? renderEditCell(col, item, idx, updateItem)
@@ -166,9 +173,8 @@ export function ItemListElement({
                 ))
             )}
 
-            {/* In continuous mode, render Add Row inline.
-                In paged mode, PagedCanvas renders it below the last page. */}
-            {fillMode && isLastPage && !isPaged && (
+            {/* Add Row — shown on the last item page in both continuous and paged modes. */}
+            {fillMode && isLastPage && (
                 <button
                     onClick={addItem}
                     className="flex items-center gap-2 mt-2 px-3 py-1.5 text-sm text-primary hover:bg-primary/10 rounded transition-colors"
@@ -212,8 +218,9 @@ function renderEditCell(
     idx: number,
     updateItem: (idx: number, patch: Partial<LineItem>) => void,
 ): React.ReactNode {
+    // py-0 removes browser UA vertical padding so input height matches the 28px cell height.
     const inputClass =
-        "w-full bg-transparent border border-transparent hover:border-blue-300 focus:border-blue-500 focus:outline-none rounded px-1 text-sm";
+        "w-full bg-transparent border border-transparent hover:border-blue-300 focus:border-blue-500 focus:outline-none rounded px-1 py-0 leading-5 text-sm";
 
     switch (col) {
         case "name":

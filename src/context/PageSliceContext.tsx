@@ -25,6 +25,11 @@ export interface PageSliceValue {
     currentPage: number;
     /** Total number of pages */
     totalPages: number;
+    /**
+     * Body grid IDs that are visible on this page.
+     * null = show all grids (continuous mode / single-page fallback).
+     */
+    visibleGridIds: string[] | null;
 }
 
 const defaultSlice: PageSliceValue = {
@@ -35,6 +40,7 @@ const defaultSlice: PageSliceValue = {
     showPostContent: true,
     currentPage: 1,
     totalPages: 1,
+    visibleGridIds: null,
 };
 
 const PageSliceContext = createContext<PageSliceValue>(defaultSlice);

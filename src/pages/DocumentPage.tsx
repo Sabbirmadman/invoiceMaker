@@ -38,7 +38,6 @@ import { downloadHtml } from "@/services/htmlExport";
 import { downloadPdf } from "@/services/pdfExport";
 import { PAGE_DIMENSIONS } from "@/types/common";
 import { WatermarkElement } from "@/components/elements/WatermarkElement";
-import { newLineItem } from "@/components/elements/ItemListElement";
 
 import type {
     CompanyData,
@@ -353,7 +352,7 @@ function PagedCanvas({
     measureRef: React.RefObject<HTMLDivElement>;
     template: import("@/types/templateV2").TemplateV2;
 }) {
-    const { showBounds, fillMode, onUpdateItems } = useFillMode();
+    const { showBounds } = useFillMode();
     const headerH = template.header.visible ? (template.header.height ?? 120) : 0;
     const footerH = template.footer.visible ? (template.footer.height ?? 60) : 0;
 
@@ -436,17 +435,22 @@ function PagedCanvas({
                             </div>
                         )}
 
-                        {/* Body — all grids, slice-controlled via PageSliceContext */}
+                        {/* Body — only grids in this page's visibleGridIds */}
                         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                            {template.body.grids.map((grid) => (
-                                <EditorGrid
-                                    key={grid.id}
-                                    section={grid}
-                                    doc={doc}
-                                    totals={totals}
-                                    editMode={false}
-                                />
-                            ))}
+                            {template.body.grids
+                                .filter((grid) =>
+                                    !slice.visibleGridIds ||
+                                    slice.visibleGridIds.includes(grid.id),
+                                )
+                                .map((grid) => (
+                                    <EditorGrid
+                                        key={grid.id}
+                                        section={grid}
+                                        doc={doc}
+                                        totals={totals}
+                                        editMode={false}
+                                    />
+                                ))}
                         </div>
 
                         {/* Footer */}
@@ -487,30 +491,6 @@ function PagedCanvas({
                 </PageSliceProvider>
             ))}
 
-            {/* Floating Add Row — below the last page box, outside pagination */}
-            {fillMode && (
-                <button
-                    onClick={() => onUpdateItems([...doc.data.items, newLineItem()])}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        marginTop: 4,
-                        padding: "5px 14px",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: "#6366f1",
-                        background: "white",
-                        border: "1px dashed #6366f1",
-                        borderRadius: 6,
-                        cursor: "pointer",
-                        alignSelf: "flex-start",
-                        marginLeft: 0,
-                    }}
-                >
-                    + Add Row
-                </button>
-            )}
         </div>
     );
 }
@@ -568,16 +548,17 @@ function TemplateBody({
                     </div>
                 )}
 
-                {/* Body grids */}
+                {/* Body grids — each wrapped with data-grid-id for height measurement */}
                 <div data-measure-body style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                     {template.body.grids.map((grid) => (
-                        <EditorGrid
-                            key={grid.id}
-                            section={grid}
-                            doc={doc}
-                            totals={totals}
-                            editMode={false}
-                        />
+                        <div key={grid.id} data-grid-id={grid.id}>
+                            <EditorGrid
+                                section={grid}
+                                doc={doc}
+                                totals={totals}
+                                editMode={false}
+                            />
+                        </div>
                     ))}
                 </div>
 
