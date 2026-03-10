@@ -12,15 +12,11 @@ export function NodeRenderer({
     node,
     doc,
     totals,
-    currentPage,
-    totalPages,
     editMode,
 }: {
     node: TemplateNode;
     doc: StoredDocument;
     totals: TotalsResult;
-    currentPage?: number;
-    totalPages?: number;
     editMode?: boolean;
 }) {
     return (
@@ -28,8 +24,6 @@ export function NodeRenderer({
             widget={node}
             doc={doc}
             totals={totals}
-            currentPage={currentPage}
-            totalPages={totalPages}
             editMode={editMode}
         />
     );

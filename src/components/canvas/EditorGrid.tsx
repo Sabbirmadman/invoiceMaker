@@ -21,8 +21,6 @@ interface Props {
     sectionLabel?: string;
     doc: StoredDocument;
     totals: TotalsResult;
-    currentPage?: number;
-    totalPages?: number;
     editMode?: boolean;
     /** Called when a node is dropped into a cell */
     onDropIntoCell?: (cellId: string, dropIndex: number) => void;
@@ -35,8 +33,6 @@ export function EditorGrid({
     sectionLabel,
     doc,
     totals,
-    currentPage = 1,
-    totalPages = 1,
     editMode = false,
     onDropIntoCell,
     onSettingsClick,
@@ -174,8 +170,6 @@ export function EditorGrid({
                         cell={cell}
                         doc={doc}
                         totals={totals}
-                        currentPage={currentPage}
-                        totalPages={totalPages}
                         editMode={editMode}
                         onDrop={onDropIntoCell}
                     />

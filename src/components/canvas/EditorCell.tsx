@@ -12,14 +12,13 @@ import type { TemplateGridCell } from "@/types/templateV2";
 import type { StoredDocument, TotalsResult } from "@/types/document";
 import { useEditorSelection } from "@/components/editor/EditorSelectionContext";
 import { useDrag } from "@/components/editor/DragContext";
+import { useFillMode } from "@/components/fill-mode/FillModeContext";
 import { NodeRenderer } from "./ContainerRenderer";
 
 interface Props {
     cell: TemplateGridCell;
     doc: StoredDocument;
     totals: TotalsResult;
-    currentPage?: number;
-    totalPages?: number;
     editMode?: boolean;
     /** Called when a drop lands on this cell */
     onDrop?: (cellId: string, dropIndex: number) => void;
@@ -29,12 +28,11 @@ export function EditorCell({
     cell,
     doc,
     totals,
-    currentPage = 1,
-    totalPages = 1,
     editMode = false,
     onDrop,
 }: Props) {
     const { isSelected, selectNode } = useEditorSelection();
+    const { showBounds } = useFillMode();
     const {
         setDropTarget,
         dropTargetId,
@@ -99,7 +97,9 @@ export function EditorCell({
                   : undefined,
               transition: "outline-color 0.1s, background-color 0.1s",
           }
-        : {};
+        : showBounds
+          ? { outline: "1px dashed #6366f1", outlineOffset: -1 }
+          : {};
 
     return (
         <div
@@ -157,8 +157,6 @@ export function EditorCell({
                         node={node}
                         doc={doc}
                         totals={totals}
-                        currentPage={currentPage}
-                        totalPages={totalPages}
                         editMode={editMode}
                     />
                 ))}

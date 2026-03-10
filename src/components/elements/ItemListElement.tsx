@@ -2,7 +2,23 @@ import type { TemplateElement } from "@/types/template";
 import type { LineItem } from "@/types/document";
 import { formatCurrency, calculateLineAmount } from "@/services/calculations";
 import { useFillMode } from "@/components/fill-mode/FillModeContext";
+import { usePageSlice } from "@/context/PageSliceContext";
 import { Trash2, Plus } from "lucide-react";
+
+export function newLineItem(): LineItem {
+    return {
+        id: `item_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        name: "",
+        description: "",
+        qty: 1,
+        unit: "",
+        rate: 0,
+        discount: 0,
+        discountType: "flat",
+        taxRate: 0,
+        amount: 0,
+    };
+}
 
 interface Props {
     element: TemplateElement;
@@ -48,20 +64,6 @@ const COLUMN_ALIGN: Record<ColKey, string> = {
     amount: "text-right",
 };
 
-function newItem(): LineItem {
-    return {
-        id: `item_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        name: "",
-        description: "",
-        qty: 1,
-        unit: "",
-        rate: 0,
-        discount: 0,
-        discountType: "flat",
-        taxRate: 0,
-        amount: 0,
-    };
-}
 
 export function ItemListElement({
     element,
@@ -73,6 +75,8 @@ export function ItemListElement({
     isLastPage = true,
 }: Props) {
     const { fillMode, onUpdateItems } = useFillMode();
+    const { totalPages } = usePageSlice();
+    const isPaged = totalPages > 1;
     const columns = (element.config?.columns as ColKey[]) ?? DEFAULT_COLUMNS;
     const headerBg = element.styles?.headerBackground ?? "#111111";
     const headerColor = element.styles?.headerColor ?? "#ffffff";
@@ -91,7 +95,7 @@ export function ItemListElement({
     }
 
     function addItem() {
-        onUpdateItems([...full, newItem()]);
+        onUpdateItems([...full, newLineItem()]);
     }
 
     function removeItem(idx: number) {
@@ -162,7 +166,9 @@ export function ItemListElement({
                 ))
             )}
 
-            {fillMode && isLastPage && (
+            {/* In continuous mode, render Add Row inline.
+                In paged mode, PagedCanvas renders it below the last page. */}
+            {fillMode && isLastPage && !isPaged && (
                 <button
                     onClick={addItem}
                     className="flex items-center gap-2 mt-2 px-3 py-1.5 text-sm text-primary hover:bg-primary/10 rounded transition-colors"

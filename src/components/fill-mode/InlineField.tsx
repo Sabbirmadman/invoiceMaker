@@ -45,7 +45,7 @@ export function InlineField({
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 rows={3}
-                className={`w-full min-w-0 bg-transparent outline-1 outline-transparent hover:outline-blue-300 focus:outline-blue-500 leading-[inherit] resize-none transition-colors overflow-y-auto p-0 m-0 border-0 ${className}`}
+                className={`w-full min-w-0 bg-transparent border-0 border-b border-gray-300 hover:border-blue-400 focus:border-blue-500 outline-none leading-[inherit] resize-none transition-colors overflow-y-auto px-0.5 py-0 m-0 ${className}`}
                 style={{ font: 'inherit' }}
             />
         );
@@ -59,7 +59,7 @@ export function InlineField({
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className={`block w-full min-w-0 bg-transparent outline-1 outline-transparent hover:outline-blue-300 focus:outline-blue-500 leading-[inherit] transition-colors overflow-hidden text-ellipsis p-0 m-0 border-0 ${className}`}
+            className={`block w-full min-w-0 bg-transparent border-0 border-b border-gray-300 hover:border-blue-400 focus:border-blue-500 outline-none leading-[inherit] transition-colors overflow-hidden text-ellipsis px-0.5 py-0 m-0 ${className}`}
             style={{ height: '1lh', font: 'inherit' }}
         />
     );

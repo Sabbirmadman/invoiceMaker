@@ -1557,10 +1557,12 @@ function WidgetConfigPanel({
         value: import("@/types/templateV2").BodyPlacement;
         label: string;
     }> = [
-        { value: "first-page", label: "First page only" },
-        { value: "all-pages", label: "Every page" },
-        { value: "last-page", label: "Last page only" },
+        { value: "first-page", label: "1st" },
+        { value: "all-pages", label: "All" },
+        { value: "last-page", label: "Last" },
     ];
+
+    const activePlacement = widget.placement ?? "all-pages";
 
     return (
         <>
@@ -1581,31 +1583,32 @@ function WidgetConfigPanel({
                 </div>
             </PanelSection>
 
-            {widget.placement !== undefined && (
-                <PanelSection title="Page Placement">
+            <PanelSection title="Page Scope">
+                <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 6, lineHeight: 1.4 }}>
+                    Which pages this widget appears on.
+                </div>
+                <div style={{ display: "flex", gap: 4 }}>
                     {placements.map((p) => (
-                        <label
+                        <button
                             key={p.value}
+                            onClick={() => onUpdatePlacement(p.value)}
                             style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 6,
-                                marginBottom: 4,
+                                flex: 1,
+                                padding: "5px 4px",
+                                fontSize: 11,
+                                fontWeight: activePlacement === p.value ? 700 : 500,
+                                color: activePlacement === p.value ? "#4f46e5" : "#64748b",
+                                background: activePlacement === p.value ? "#ede9fe" : "white",
+                                border: `1px solid ${activePlacement === p.value ? "#c7d2fe" : "#d1d5db"}`,
+                                borderRadius: 5,
                                 cursor: "pointer",
-                                fontSize: 12,
                             }}
                         >
-                            <input
-                                type="radio"
-                                name="placement"
-                                checked={widget.placement === p.value}
-                                onChange={() => onUpdatePlacement(p.value)}
-                            />
                             {p.label}
-                        </label>
+                        </button>
                     ))}
-                </PanelSection>
-            )}
+                </div>
+            </PanelSection>
 
             <button
                 onClick={onDelete}

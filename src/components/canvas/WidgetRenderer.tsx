@@ -5,12 +5,13 @@
  * In editor mode: shows selection outline and drag handle.
  * In preview mode: transparent wrapper, identical output to current rendering.
  */
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { TemplateWidget } from "@/types/templateV2";
 import type { StoredDocument, TotalsResult } from "@/types/document";
 import { useEditorSelection } from "@/components/editor/EditorSelectionContext";
 import { useDrag } from "@/components/editor/DragContext";
+import { useFillMode } from "@/components/fill-mode/FillModeContext";
 
 // Existing element components
 import { LogoElement } from "@/components/elements/LogoElement";
@@ -29,8 +30,15 @@ import { WatermarkElement } from "@/components/elements/WatermarkElement";
 
 // Adapt TemplateWidget to the TemplateElement shape the existing components expect
 import type { TemplateElement } from "@/types/template";
+import { usePageSlice } from "@/context/PageSliceContext";
 
 // ── Widget metadata ───────────────────────────────────────────────────────────
+
+const PLACEMENT_SHORT: Record<string, string> = {
+    "first-page": "1st Page",
+    "all-pages":  "All Pages",
+    "last-page":  "Last Page",
+};
 
 const WIDGET_META: Record<string, { label: string; description: string }> = {
     logo:            { label: "Logo",            description: "Company logo image" },
@@ -67,8 +75,6 @@ interface Props {
     widget: TemplateWidget;
     doc: StoredDocument;
     totals: TotalsResult;
-    currentPage?: number;
-    totalPages?: number;
     /** Editor mode: show selection outline + drag handle */
     editMode?: boolean;
     /** Called when the user clicks to select this widget */
@@ -79,17 +85,27 @@ export function WidgetRenderer({
     widget,
     doc,
     totals,
-    currentPage = 1,
-    totalPages = 1,
     editMode = false,
     onSelect,
 }: Props) {
     const { isSelected, selectNode } = useEditorSelection();
     const { startDragExisting } = useDrag();
+    const { showBounds } = useFillMode();
+    const pageSlice = usePageSlice();
     const selected = editMode && isSelected(widget.id);
+    const guideRef = useRef<HTMLDivElement>(null);
+    const [guideHeight, setGuideHeight] = useState(0);
+
+    useEffect(() => {
+        if (!showBounds || !guideRef.current) return;
+        const obs = new ResizeObserver(() => {
+            if (guideRef.current) setGuideHeight(guideRef.current.offsetHeight);
+        });
+        obs.observe(guideRef.current);
+        return () => obs.disconnect();
+    }, [showBounds]);
     const el = widgetToElement(widget);
     const { data } = doc;
-    const meta = data.meta;
 
     // ── Hover tooltip state ───────────────────────────────────────────────────
     const [tooltip, setTooltip] = useState<{ x: number; y: number } | null>(null);
@@ -151,29 +167,46 @@ export function WidgetRenderer({
             content = <DocumentInfoElement element={el} meta={data.meta} docType={docType} />;
             break;
         }
-        case "itemList":
+        case "itemList": {
+            if (pageSlice.showItemList === false) {
+                content = null;
+                break;
+            }
+            const start = pageSlice.itemStartIndex;
+            const end = pageSlice.itemEndIndex === -1 ? data.items.length : pageSlice.itemEndIndex;
+            const slicedItems = data.items.slice(start, end);
             content = (
                 <ItemListElement
                     element={el}
-                    items={data.items}
+                    items={slicedItems}
+                    allItems={data.items}
                     currency={data.totalsConfig.currency}
                     showHeader
-                    itemOffset={0}
-                    isLastPage
+                    itemOffset={start}
+                    isLastPage={pageSlice.isLastItemPage}
                 />
             );
             break;
+        }
         case "totalsBlock":
-            content = <TotalsBlockElement element={el} totals={totals} config={data.totalsConfig} />;
+            if (!pageSlice.showTotals) {
+                content = null;
+            } else {
+                content = <TotalsBlockElement element={el} totals={totals} config={data.totalsConfig} />;
+            }
             break;
         case "notes":
-            content = <NotesElement element={el} notes={data.notes} />;
+            content = pageSlice.showPostContent
+                ? <NotesElement element={el} notes={data.notes} />
+                : null;
             break;
         case "termsConditions":
-            content = <TermsElement element={el} terms={data.terms} />;
+            content = pageSlice.showPostContent
+                ? <TermsElement element={el} terms={data.terms} />
+                : null;
             break;
         case "pageNumber":
-            content = <PageNumberElement element={el} current={currentPage} total={totalPages} />;
+            content = <PageNumberElement element={el} current={pageSlice.currentPage} total={pageSlice.totalPages} />;
             break;
         case "divider":
             content = <DividerElement element={el} />;
@@ -188,8 +221,96 @@ export function WidgetRenderer({
             content = null;
     }
 
+    // In paged document view, hide widgets based on their placement setting
+    if (!editMode && pageSlice.totalPages > 1 && widget.placement) {
+        const { currentPage, totalPages } = pageSlice;
+        const hide =
+            (widget.placement === "first-page" && currentPage !== 1) ||
+            (widget.placement === "last-page" && currentPage !== totalPages);
+        if (hide) return null;
+    }
+
     if (!editMode) {
-        return <>{content}</>;
+        if (!showBounds) return <>{content}</>;
+
+        // Guides mode: dashed outline + label chip on top border
+        const meta_ = WIDGET_META[widget.type];
+        const placement = widget.placement ?? "all-pages";
+        const placementLabel = PLACEMENT_SHORT[placement] ?? placement;
+        const label = meta_?.label ?? widget.type;
+
+        return (
+            <div
+                ref={guideRef}
+                style={{
+                    position: "relative",
+                    outline: "1px dashed #6366f1",
+                    outlineOffset: -1,
+                }}
+            >
+                {/* Label chip — sits on the top border */}
+                <div
+                    style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 6,
+                        transform: "translateY(-50%)",
+                        zIndex: 20,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        pointerEvents: "none",
+                    }}
+                >
+                    <span style={{
+                        background: "#6366f1",
+                        color: "#fff",
+                        fontSize: 9,
+                        fontWeight: 700,
+                        padding: "1px 5px",
+                        borderRadius: 3,
+                        lineHeight: "14px",
+                        whiteSpace: "nowrap",
+                        fontFamily: "ui-monospace, monospace",
+                    }}>
+                        {label}
+                    </span>
+                    <span style={{
+                        background: "#e0e7ff",
+                        color: "#4338ca",
+                        fontSize: 9,
+                        fontWeight: 600,
+                        padding: "1px 4px",
+                        borderRadius: 3,
+                        lineHeight: "14px",
+                        whiteSpace: "nowrap",
+                        fontFamily: "ui-monospace, monospace",
+                    }}>
+                        {placementLabel}
+                    </span>
+                    {guideHeight > 0 && (
+                        <span style={{
+                            background: "#f1f5f9",
+                            color: "#64748b",
+                            fontSize: 9,
+                            fontWeight: 500,
+                            padding: "1px 4px",
+                            borderRadius: 3,
+                            lineHeight: "14px",
+                            whiteSpace: "nowrap",
+                            fontFamily: "ui-monospace, monospace",
+                        }}>
+                            {guideHeight}px
+                        </span>
+                    )}
+                </div>
+                {content ?? (
+                    <div style={{ padding: "6px 8px", color: "#9ca3af", fontSize: 10, fontStyle: "italic" }}>
+                        (empty)
+                    </div>
+                )}
+            </div>
+        );
     }
 
     // In editor mode, show a placeholder for widgets that rendered nothing (e.g. empty notes/terms)

@@ -22,6 +22,8 @@ import {
     ZoomIn,
     ZoomOut,
     Settings,
+    FormInput,
+    BarChart2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -179,6 +181,7 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
 
     const [templateName, setTemplateName] = useState(template.name);
     const [previewMode, setPreviewMode] = useState(false);
+    const [previewSubMode, setPreviewSubMode] = useState<"data" | "fill">("data");
     const [zoom, setZoom] = useState(0.75);
     // focusedSection: "header" | "footer" | a body grid id
     const [focusedSection, setFocusedSection] = useState<string>(
@@ -275,7 +278,7 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
     return (
         <FillModeProvider
             value={{
-                fillMode: false,
+                fillMode: !previewMode || previewSubMode === "fill",
                 showBounds: false,
                 docId: "preview",
                 onUpdateCompany: () => {},
@@ -470,6 +473,64 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                         <Eye className="size-3.5 mr-1" />{" "}
                         {previewMode ? "Edit" : "Preview"}
                     </Button>
+
+                    {/* Sub-mode toggle — only in preview */}
+                    {previewMode && (
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                background: "#f1f5f9",
+                                border: "1px solid #e2e8f0",
+                                borderRadius: 6,
+                                padding: 2,
+                                gap: 2,
+                            }}
+                        >
+                            <button
+                                title="Preview with sample data"
+                                onClick={() => setPreviewSubMode("data")}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    padding: "3px 8px",
+                                    borderRadius: 4,
+                                    border: "none",
+                                    cursor: "pointer",
+                                    background: previewSubMode === "data" ? "white" : "transparent",
+                                    color: previewSubMode === "data" ? "#6366f1" : "#64748b",
+                                    boxShadow: previewSubMode === "data" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                                    transition: "all 0.15s",
+                                }}
+                            >
+                                <BarChart2 size={12} /> Data
+                            </button>
+                            <button
+                                title="Preview input fields"
+                                onClick={() => setPreviewSubMode("fill")}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    padding: "3px 8px",
+                                    borderRadius: 4,
+                                    border: "none",
+                                    cursor: "pointer",
+                                    background: previewSubMode === "fill" ? "white" : "transparent",
+                                    color: previewSubMode === "fill" ? "#6366f1" : "#64748b",
+                                    boxShadow: previewSubMode === "fill" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                                    transition: "all 0.15s",
+                                }}
+                            >
+                                <FormInput size={12} /> Fields
+                            </button>
+                        </div>
+                    )}
 
                     <Button size="sm" onClick={handleSave}>
                         <Save className="size-3.5 mr-1" /> Save
