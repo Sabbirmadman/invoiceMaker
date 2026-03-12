@@ -11,22 +11,18 @@
 import { useState, useCallback } from "react";
 import type {
     TemplateV2,
-    BodySectionV2,
     SectionGridV2,
     TemplateGridCell,
     TemplateNode,
     TemplateWidget,
     GridConfig,
     CellFlex,
-    PagePadding,
-    PageAccentBorders,
     WatermarkConfig,
     SectionBorder,
 } from "@/types/templateV2";
 import {
     makeWidget,
     makeCell,
-    removeNodeById,
     insertNode,
     removeNodeFromSection,
     removeNodeFromBody,

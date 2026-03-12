@@ -7,7 +7,7 @@
  * - Implicit empty cells are shown as drop targets in editor mode.
  * - In preview mode: clean CSS grid, no overlays.
  */
-import React from "react";
+
 import { Settings } from "lucide-react";
 import type { SectionGridV2 } from "@/types/templateV2";
 import type { StoredDocument, TotalsResult } from "@/types/document";

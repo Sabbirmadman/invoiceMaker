@@ -1,4 +1,4 @@
-import React from "react";
+
 import type { TemplateElement } from "@/types/template";
 import type { TotalsConfig, TotalsResult } from "@/types/document";
 import { formatCurrency } from "@/services/calculations";

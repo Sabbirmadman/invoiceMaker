@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import type { KeyboardEvent } from "react";
 
 interface InlineFieldProps {
@@ -26,6 +26,14 @@ export function InlineField({
 }: InlineFieldProps) {
     const ref = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
 
+    // Auto-resize textarea to fit content — keeps fill mode height identical to preview text height.
+    useEffect(() => {
+        if (!multiline || !ref.current) return;
+        const el = ref.current;
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+    }, [multiline, value]);
+
     function handleKeyDown(e: KeyboardEvent) {
         if (!multiline && e.key === "Enter") {
             e.preventDefault();
@@ -41,11 +49,17 @@ export function InlineField({
             <textarea
                 ref={ref as React.RefObject<HTMLTextAreaElement>}
                 value={value}
-                onChange={(e) => onChange(e.target.value)}
+                onChange={(e) => {
+                    onChange(e.target.value);
+                    // Immediately resize on each keystroke
+                    const el = e.target;
+                    el.style.height = "auto";
+                    el.style.height = el.scrollHeight + "px";
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
-                rows={3}
-                className={`w-full min-w-0 bg-transparent border-0 border-b border-gray-300 hover:border-blue-400 focus:border-blue-500 outline-none leading-[inherit] resize-none transition-colors overflow-y-auto px-0.5 py-0 m-0 ${className}`}
+                rows={1}
+                className={`w-full min-w-0 bg-transparent border-0 border-b border-gray-300 hover:border-blue-400 focus:border-blue-500 outline-none leading-[inherit] resize-none transition-colors overflow-hidden px-0.5 py-0 m-0 ${className}`}
                 style={{ font: 'inherit' }}
             />
         );

@@ -57,7 +57,11 @@ export function BillToElement({ element, client }: Props) {
         {f('company') && client.company && <div>{client.company}</div>}
         {f('address') && client.address && <div>{client.address}</div>}
         {f('cityStateZip') && (client.city || client.state || client.zip) && (
-          <div>{[client.city, client.state, client.zip].filter(Boolean).join(', ')}</div>
+          <div className="flex gap-1 flex-wrap">
+            {client.city && <span>{client.city}</span>}
+            {client.state && <span>{client.state}</span>}
+            {client.zip && <span>{client.zip}</span>}
+          </div>
         )}
         {f('country') && client.country && <div>{client.country}</div>}
         {f('phone') && client.phone && <div>{client.phone}</div>}

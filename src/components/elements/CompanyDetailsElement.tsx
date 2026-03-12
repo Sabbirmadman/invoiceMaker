@@ -124,10 +124,10 @@ export function CompanyDetailsElement({ element, company }: Props) {
                 )}
                 {f("cityStateZip") &&
                     (company.city || company.state || company.zip) && (
-                        <div>
-                            {[company.city, company.state, company.zip]
-                                .filter(Boolean)
-                                .join(", ")}
+                        <div className="flex gap-1 flex-wrap">
+                            {company.city && <span>{company.city}</span>}
+                            {company.state && <span>{company.state}</span>}
+                            {company.zip && <span>{company.zip}</span>}
                         </div>
                     )}
                 {f("country") && company.country && (

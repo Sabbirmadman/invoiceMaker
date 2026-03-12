@@ -4,7 +4,7 @@
  * Renders a scaled-down live preview of a widget using dummy data.
  * Used inside the palette tooltip so users can see what each widget looks like.
  */
-import React from "react";
+
 import type { DragType } from "./WidgetPalette";
 import type { TemplateElement } from "@/types/template";
 import type { TotalsResult } from "@/types/document";
@@ -46,7 +46,7 @@ const DUMMY_COMPANY = {
     email: "hello@company.com",
     website: "www.company.com",
     taxId: "XX-XXXXXXX",
-    logoUrl: undefined,
+    logoUrl: "",
 };
 
 const DUMMY_CLIENT = {
@@ -73,19 +73,20 @@ const DUMMY_INVOICE_META = {
     projectName: "",
     reference: "",
     placeOfSupply: "",
+    currency: "USD",
 };
 
 const DUMMY_ITEMS = [
-    { id: "1", name: "Web Design", description: "Homepage design", qty: 1, unit: "", rate: 1200, discount: 0, discountType: "percent" as const, tax: 0 },
-    { id: "2", name: "Development", description: "Frontend build", qty: 3, unit: "hrs", rate: 150, discount: 0, discountType: "percent" as const, tax: 8 },
+    { id: "1", name: "Web Design", description: "Homepage design", qty: 1, unit: "", rate: 1200, discount: 0, discountType: "percent" as const, taxRate: 0, amount: 1200 },
+    { id: "2", name: "Development", description: "Frontend build", qty: 3, unit: "hrs", rate: 150, discount: 0, discountType: "percent" as const, taxRate: 8, amount: 450 },
 ];
 
 const DUMMY_TOTALS: TotalsResult = {
     subTotal: 1650,
     itemDiscountTotal: 0,
     overallDiscount: 0,
-    tax1: 36,
-    tax2: 0,
+    tax1Amount: 36,
+    tax2Amount: 0,
     shipping: 0,
     adjustment: 0,
     total: 1686,
@@ -98,8 +99,9 @@ const DUMMY_TOTALS_CONFIG = {
     overallDiscountType: "flat" as const,
     tax1: { label: "Tax", rate: 8, enabled: true },
     tax2: { label: "Tax 2", rate: 0, enabled: false },
-    shipping: { label: "Shipping", amount: 0, enabled: false },
-    adjustment: { label: "Adjustment", amount: 0, enabled: false },
+    shipping: 0,
+    adjustment: 0,
+    amountPaid: 0,
     currency: "USD",
 };
 

@@ -41,7 +41,7 @@ import {
 } from "@/components/editor/EditorSelectionContext";
 import { DragProvider, useDrag } from "@/components/editor/DragContext";
 import { WidgetPalette } from "@/components/editor/WidgetPalette";
-import { PropertiesPanel } from "@/components/editor/PropertiesPanel";
+import { PropertiesPanel } from "@/components/editor/propertiesPanel";
 import { EditorGrid } from "@/components/canvas/EditorGrid";
 import { WatermarkPlacementDialog } from "@/components/editor/WatermarkPlacementDialog";
 import type { WatermarkScope } from "@/components/editor/WatermarkPlacementDialog";
@@ -84,7 +84,7 @@ function makeDummyDoc(template: TemplateV2): StoredDocument {
                 grid: { columns: [], rows: [] },
                 elements: [],
             },
-        } as import("@/types/template").Template,
+        } as unknown as TemplateV2,
         data: {
             company: {
                 name: "Your Company",
@@ -601,16 +601,28 @@ function EditorInner({ templateId }: { templateId: string | undefined }) {
                                 position: "relative",
                                 fontFamily: template.theme.fontFamily,
                                 color: template.theme.primaryColor,
-                                borderLeft: template.accentBorders?.left
-                                    ?.enabled
-                                    ? `${template.accentBorders.left.width}px solid ${template.accentBorders.left.color}`
-                                    : undefined,
-                                borderRight: template.accentBorders?.right
-                                    ?.enabled
-                                    ? `${template.accentBorders.right.width}px solid ${template.accentBorders.right.color}`
-                                    : undefined,
                             }}
                         >
+                            {/* Left accent border — absolutely positioned so it doesn't affect layout */}
+                            {template.accentBorders?.left?.enabled && (
+                                <div style={{
+                                    position: "absolute", top: 0, left: 0,
+                                    width: template.accentBorders.left.width,
+                                    height: "100%",
+                                    background: template.accentBorders.left.color,
+                                    zIndex: 10, pointerEvents: "none",
+                                }} />
+                            )}
+                            {/* Right accent border */}
+                            {template.accentBorders?.right?.enabled && (
+                                <div style={{
+                                    position: "absolute", top: 0, right: 0,
+                                    width: template.accentBorders.right.width,
+                                    height: "100%",
+                                    background: template.accentBorders.right.color,
+                                    zIndex: 10, pointerEvents: "none",
+                                }} />
+                            )}
                             {template.accentBorders?.top?.enabled && (
                                 <div
                                     style={{

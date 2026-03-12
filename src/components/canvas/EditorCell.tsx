@@ -7,7 +7,7 @@
  * - Accepts drops from palette and from existing widgets.
  * - Children (TemplateNodes) rendered vertically stacked.
  */
-import React from "react";
+
 import type { TemplateGridCell } from "@/types/templateV2";
 import type { StoredDocument, TotalsResult } from "@/types/document";
 import { useEditorSelection } from "@/components/editor/EditorSelectionContext";

@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import type { Template, AnyTemplate } from '@/types/template'
+import type { AnyTemplate } from '@/types/template'
 import type { TemplateV2 } from '@/types/templateV2'
 import { loadCustomTemplates } from '@/services/storage'
 

@@ -1,9 +1,10 @@
+import React, { useState, useRef, useEffect } from "react";
 import type { TemplateElement } from "@/types/template";
 import type { LineItem } from "@/types/document";
 import { formatCurrency, calculateLineAmount } from "@/services/calculations";
 import { useFillMode } from "@/components/fill-mode/FillModeContext";
 import { usePageSlice } from "@/context/PageSliceContext";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, ChevronUp, ChevronDown } from "lucide-react";
 
 export function newLineItem(): LineItem {
     return {
@@ -78,13 +79,29 @@ export function ItemListElement({
     isLastPage = true,
 }: Props) {
     const { fillMode, onUpdateItems } = useFillMode();
-    const { totalPages } = usePageSlice();
-    const isPaged = totalPages > 1;
+    usePageSlice();
     const columns = (element.config?.columns as ColKey[]) ?? DEFAULT_COLUMNS;
-    const headerBg = element.styles?.headerBackground ?? "#111111";
-    const headerColor = element.styles?.headerColor ?? "#ffffff";
-    const altRowColor = element.styles?.alternateRowColor ?? "#f9fafb";
-    const full = allItems ?? items; // full list for mutations
+    const stackNameDescription = (element.config?.stackNameDescription as boolean) ?? false;
+    const headerBg = (element.styles?.headerBackground as string) ?? "#111111";
+    const headerColor = (element.styles?.headerColor as string) ?? "#ffffff";
+    const altRowColor = (element.styles?.alternateRowColor as string) ?? "#f0f2f5";
+    const rowBorderColor = (element.styles?.rowBorderColor as string) ?? "#e5e7eb";
+    const showOuterBorder = element.styles?.showOuterBorder === "true";
+    const showColumnBorders = (element.config?.showColumnBorders as boolean) ?? false;
+    const descriptionWrap = (element.config?.descriptionWrap as boolean) ?? false;
+    const full = allItems ?? items;
+
+    // Text style — from the shared WidgetStylesPanel (color, fontSize, fontWeight)
+    const textStyle: React.CSSProperties = {
+        ...(element.styles?.color ? { color: element.styles.color as string } : {}),
+        ...(element.styles?.fontSize ? { fontSize: element.styles.fontSize as string } : {}),
+        ...(element.styles?.fontWeight ? { fontWeight: element.styles.fontWeight as string } : {}),
+    };
+
+    // When stacked, description is folded into the name column — remove it from the column list
+    const effectiveColumns: ColKey[] = stackNameDescription
+        ? columns.filter((c) => c !== "description")
+        : columns;
 
     function updateItem(idx: number, patch: Partial<LineItem>) {
         const globalIdx = itemOffset + idx;
@@ -102,78 +119,146 @@ export function ItemListElement({
     }
 
     function removeItem(idx: number) {
-        const globalIdx = itemOffset + idx;
-        onUpdateItems(full.filter((_, i) => i !== globalIdx));
+        onUpdateItems(full.filter((_, i) => i !== itemOffset + idx));
     }
 
+    function moveItem(fromGlobal: number, toGlobal: number) {
+        if (toGlobal < 0 || toGlobal >= full.length) return;
+        const next = [...full];
+        const [moved] = next.splice(fromGlobal, 1);
+        next.splice(toGlobal, 0, moved);
+        onUpdateItems(next);
+    }
+
+    const rowBorderStyle = `1px solid ${rowBorderColor}`;
+
+    const colBorder = showColumnBorders ? rowBorderStyle : undefined;
+
     return (
-        <div className="w-full text-sm">
+        <div
+            className="w-full text-sm"
+            style={{
+                ...textStyle,
+                ...(showOuterBorder ? { border: rowBorderStyle, borderRadius: 2 } : {}),
+            }}
+        >
             {showHeader && (
                 <div
                     data-col-header
                     className="flex w-full"
-                    style={{ backgroundColor: headerBg, color: headerColor }}
+                    style={{ backgroundColor: headerBg, color: headerColor, borderBottom: rowBorderStyle }}
                 >
-                    {/* Spacer always present so header columns align with data rows in both modes */}
+                    {/* Spacer — always same width in both modes to keep columns aligned */}
                     <div className="w-8 shrink-0" />
-                    <div className="w-8 px-3 py-2 text-left font-medium shrink-0">
-                        #
-                    </div>
-                    {columns.map((col) => (
+                    <div className="w-8 px-3 py-2 text-left font-medium shrink-0" style={{ borderRight: colBorder }}>#</div>
+                    {effectiveColumns.map((col, ci) => (
                         <div
                             key={col}
-                            className={`flex-1 px-3 py-2 font-medium ${COLUMN_ALIGN[col]}`}
+                            className={`px-3 py-2 font-medium ${COLUMN_ALIGN[col]}`}
+                            style={{
+                                flex: stackNameDescription && col === "name" ? 2 : 1,
+                                borderRight: ci < effectiveColumns.length - 1 ? colBorder : undefined,
+                            }}
                         >
-                            {COLUMN_LABELS[col]}
+                            {stackNameDescription && col === "name"
+                                ? "Item & Description"
+                                : COLUMN_LABELS[col]}
                         </div>
                     ))}
                 </div>
             )}
 
             {items.length === 0 && !fillMode ? (
-                <div className="text-muted-foreground text-center py-6 text-sm border-b">
+                <div className="text-muted-foreground text-center py-6 text-sm" style={{ borderBottom: rowBorderStyle }}>
                     No items yet
                 </div>
             ) : (
-                items.map((item, idx) => (
-                    <div
-                        key={item.id}
-                        data-row-index={itemOffset + idx}
-                        className="flex w-full border-b items-center group"
-                        style={{
-                            backgroundColor:
-                                idx % 2 === 1 ? altRowColor : "#ffffff",
-                        }}
-                    >
-                        {/* Trash button in edit mode; invisible spacer in preview — keeps column positions identical */}
-                        {fillMode ? (
-                            <button
-                                onClick={() => removeItem(idx)}
-                                className="w-8 px-1 py-2 text-muted-foreground hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                                <Trash2 className="size-3" />
-                            </button>
-                        ) : (
-                            <div className="w-8 shrink-0" />
-                        )}
-                        <div className={`w-8 px-3 py-1 text-muted-foreground shrink-0 ${CELL_H} flex items-center`}>
-                            {itemOffset + idx + 1}
-                        </div>
-                        {columns.map((col) => (
-                            <div
-                                key={col}
-                                className={`flex-1 min-w-0 px-2 ${CELL_H} flex items-center ${COLUMN_ALIGN[col]}`}
-                            >
-                                {col !== "amount" && fillMode
-                                    ? renderEditCell(col, item, idx, updateItem)
-                                    : renderCell(col, item, currency)}
+                items.map((item, idx) => {
+                    const globalIdx = itemOffset + idx;
+                    return (
+                        <div
+                            key={item.id}
+                            data-row-index={globalIdx}
+                            className="flex w-full items-stretch group"
+                            style={{
+                                backgroundColor: idx % 2 === 1 ? altRowColor : "#ffffff",
+                                borderBottom: rowBorderStyle,
+                            }}
+                        >
+                            {/* Delete button — fill mode only */}
+                            {fillMode ? (
+                                <button
+                                    onClick={() => removeItem(idx)}
+                                    className="w-8 px-1 py-2 text-muted-foreground hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    style={{ borderRight: colBorder }}
+                                >
+                                    <Trash2 className="size-3" />
+                                </button>
+                            ) : (
+                                <div className="w-8 shrink-0" />
+                            )}
+
+                            {/* Row number — doubles as ↑↓ move buttons on hover in fill mode */}
+                            <div className={`w-8 shrink-0 ${CELL_H} flex items-center relative`} style={{ borderRight: colBorder }}>
+                                {fillMode ? (
+                                    <>
+                                        <span className="px-3 text-muted-foreground group-hover:opacity-0 transition-opacity select-none">
+                                            {globalIdx + 1}
+                                        </span>
+                                        <div className="absolute inset-0 flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => moveItem(globalIdx, globalIdx - 1)}
+                                                disabled={globalIdx === 0}
+                                                className="flex-1 flex items-center justify-center text-blue-400 hover:text-blue-600 disabled:opacity-20 disabled:cursor-not-allowed"
+                                            >
+                                                <ChevronUp className="size-3" />
+                                            </button>
+                                            <button
+                                                onClick={() => moveItem(globalIdx, globalIdx + 1)}
+                                                disabled={globalIdx === full.length - 1}
+                                                className="flex-1 flex items-center justify-center text-blue-400 hover:text-blue-600 disabled:opacity-20 disabled:cursor-not-allowed"
+                                            >
+                                                <ChevronDown className="size-3" />
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <span className="px-3 text-muted-foreground">{globalIdx + 1}</span>
+                                )}
                             </div>
-                        ))}
-                    </div>
-                ))
+
+                            {/* Data columns */}
+                            {effectiveColumns.map((col, ci) => {
+                                const isStackedName = stackNameDescription && col === "name";
+                                const isWrapDesc = col === "description" && descriptionWrap;
+                                const cellPadding = isStackedName ? "py-2" : isWrapDesc ? "py-1" : CELL_H;
+                                const cellAlign = isStackedName || isWrapDesc ? "items-start" : "items-center";
+                                return (
+                                <div
+                                    key={col}
+                                    className={`min-w-0 px-2 ${cellPadding} flex ${cellAlign} ${COLUMN_ALIGN[col]}`}
+                                    style={{
+                                        flex: isStackedName ? 2 : 1,
+                                        borderRight: ci < effectiveColumns.length - 1 ? colBorder : undefined,
+                                    }}
+                                >
+                                    {col === "amount"
+                                        ? renderCell(col, item, currency, descriptionWrap)
+                                        : fillMode
+                                          ? (stackNameDescription && col === "name"
+                                                ? renderStackedEditCell(item, idx, updateItem)
+                                                : renderEditCell(col, item, idx, updateItem, currency, descriptionWrap))
+                                          : (stackNameDescription && col === "name"
+                                                ? renderStackedCell(item, descriptionWrap)
+                                                : renderCell(col, item, currency, descriptionWrap))}
+                                </div>
+                                );
+                            })}
+                        </div>
+                    );
+                })
             )}
 
-            {/* Add Row — shown on the last item page in both continuous and paged modes. */}
             {fillMode && isLastPage && (
                 <button
                     onClick={addItem}
@@ -187,12 +272,57 @@ export function ItemListElement({
     );
 }
 
-function renderCell(col: ColKey, item: LineItem, currency: string): string {
+// ── Stacked name + description (preview) ─────────────────────────────────────
+
+function renderStackedCell(item: LineItem, descriptionWrap: boolean): React.ReactNode {
+    return (
+        <div className="py-0.5 w-full">
+            <div className="font-medium leading-snug">{item.name || <span className="text-muted-foreground/40">Item name</span>}</div>
+            {item.description && (
+                <div className={`text-xs text-muted-foreground leading-snug mt-0.5 ${descriptionWrap ? "whitespace-normal wrap-break-word" : "truncate"}`}>
+                    {item.description}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── Stacked name + description (fill mode) ────────────────────────────────────
+
+function renderStackedEditCell(
+    item: LineItem,
+    idx: number,
+    updateItem: (idx: number, patch: Partial<LineItem>) => void,
+): React.ReactNode {
+    const base = "w-full bg-transparent border border-transparent hover:border-blue-300 focus:border-blue-500 focus:outline-none rounded px-1 py-0 leading-5";
+    return (
+        <div className="w-full py-0.5">
+            <input
+                className={`${base} text-sm`}
+                value={item.name}
+                onChange={(e) => updateItem(idx, { name: e.target.value })}
+                placeholder="Item name"
+            />
+            <AutoResizeTextarea
+                className={`${base} text-xs text-muted-foreground`}
+                value={item.description}
+                onChange={(v) => updateItem(idx, { description: v })}
+                placeholder="Description"
+            />
+        </div>
+    );
+}
+
+function renderCell(col: ColKey, item: LineItem, currency: string, descriptionWrap = false): React.ReactNode {
     switch (col) {
         case "name":
             return item.name;
         case "description":
-            return item.description;
+            return (
+                <span className={descriptionWrap ? "whitespace-normal wrap-break-word w-full" : "truncate w-full"}>
+                    {item.description}
+                </span>
+            );
         case "qty":
             return String(item.qty);
         case "unit":
@@ -212,11 +342,104 @@ function renderCell(col: ColKey, item: LineItem, currency: string): string {
     }
 }
 
+/** Auto-resizing textarea — expands to fit content, looks like a single line when empty. */
+function AutoResizeTextarea({
+    value,
+    onChange,
+    placeholder,
+    className,
+}: {
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+    className?: string;
+}) {
+    const ref = useRef<HTMLTextAreaElement>(null);
+    useEffect(() => {
+        if (!ref.current) return;
+        ref.current.style.height = "auto";
+        ref.current.style.height = ref.current.scrollHeight + "px";
+    }, [value]);
+    return (
+        <textarea
+            ref={ref}
+            rows={1}
+            value={value}
+            placeholder={placeholder}
+            onChange={(e) => {
+                onChange(e.target.value);
+                const el = e.target;
+                el.style.height = "auto";
+                el.style.height = el.scrollHeight + "px";
+            }}
+            className={className}
+            style={{ resize: "none", overflow: "hidden", font: "inherit" }}
+        />
+    );
+}
+
+/**
+ * NumericEditCell — shows formatted text when idle, raw number input when focused.
+ * This keeps fill mode visually identical to preview when the user isn't actively editing.
+ */
+function NumericEditCell({
+    value,
+    onChange,
+    format,
+    min,
+    max,
+    step,
+}: {
+    value: number;
+    onChange: (v: number) => void;
+    format: (v: number) => string;
+    min?: number;
+    max?: number;
+    step?: number;
+}) {
+    const [focused, setFocused] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const baseClass =
+        "w-full bg-transparent border border-transparent hover:border-blue-300 rounded px-1 py-0 leading-5 text-sm text-right";
+
+    if (!focused) {
+        return (
+            <div
+                className={`${baseClass} cursor-text`}
+                onClick={() => {
+                    setFocused(true);
+                    setTimeout(() => { inputRef.current?.select(); }, 0);
+                }}
+            >
+                {format(value)}
+            </div>
+        );
+    }
+
+    return (
+        <input
+            ref={inputRef}
+            autoFocus
+            className={`${baseClass} focus:border-blue-500 focus:outline-none`}
+            type="number"
+            value={value}
+            min={min}
+            max={max}
+            step={step}
+            onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+            onBlur={() => setFocused(false)}
+        />
+    );
+}
+
 function renderEditCell(
     col: ColKey,
     item: LineItem,
     idx: number,
     updateItem: (idx: number, patch: Partial<LineItem>) => void,
+    currency: string,
+    descriptionWrap = false,
 ): React.ReactNode {
     // py-0 removes browser UA vertical padding so input height matches the 28px cell height.
     const inputClass =
@@ -233,28 +456,28 @@ function renderEditCell(
                 />
             );
         case "description":
-            return (
+            return descriptionWrap ? (
+                <AutoResizeTextarea
+                    className={inputClass}
+                    value={item.description}
+                    onChange={(v) => updateItem(idx, { description: v })}
+                    placeholder="Description"
+                />
+            ) : (
                 <input
                     className={inputClass}
                     value={item.description}
-                    onChange={(e) =>
-                        updateItem(idx, { description: e.target.value })
-                    }
+                    onChange={(e) => updateItem(idx, { description: e.target.value })}
                     placeholder="Description"
                 />
             );
         case "qty":
             return (
-                <input
-                    className={`${inputClass} text-right`}
-                    type="number"
+                <NumericEditCell
                     value={item.qty}
+                    onChange={(v) => updateItem(idx, { qty: v })}
+                    format={(v) => String(v)}
                     min={0}
-                    onChange={(e) =>
-                        updateItem(idx, {
-                            qty: parseFloat(e.target.value) || 0,
-                        })
-                    }
                 />
             );
         case "unit":
@@ -268,48 +491,37 @@ function renderEditCell(
             );
         case "rate":
             return (
-                <input
-                    className={`${inputClass} text-right`}
-                    type="number"
+                <NumericEditCell
                     value={item.rate}
+                    onChange={(v) => updateItem(idx, { rate: v })}
+                    format={(v) => formatCurrency(v, currency)}
                     min={0}
                     step={0.01}
-                    onChange={(e) =>
-                        updateItem(idx, {
-                            rate: parseFloat(e.target.value) || 0,
-                        })
-                    }
                 />
             );
         case "discount":
             return (
-                <input
-                    className={`${inputClass} text-right`}
-                    type="number"
+                <NumericEditCell
                     value={item.discount}
+                    onChange={(v) => updateItem(idx, { discount: v })}
+                    format={(v) =>
+                        item.discountType === "percent"
+                            ? `${v}%`
+                            : formatCurrency(v, currency)
+                    }
                     min={0}
                     step={0.01}
-                    onChange={(e) =>
-                        updateItem(idx, {
-                            discount: parseFloat(e.target.value) || 0,
-                        })
-                    }
                 />
             );
         case "tax":
             return (
-                <input
-                    className={`${inputClass} text-right`}
-                    type="number"
+                <NumericEditCell
                     value={item.taxRate}
+                    onChange={(v) => updateItem(idx, { taxRate: v })}
+                    format={(v) => `${v}%`}
                     min={0}
                     max={100}
                     step={0.1}
-                    onChange={(e) =>
-                        updateItem(idx, {
-                            taxRate: parseFloat(e.target.value) || 0,
-                        })
-                    }
                 />
             );
         default:

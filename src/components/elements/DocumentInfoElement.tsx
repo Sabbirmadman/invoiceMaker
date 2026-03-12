@@ -1,4 +1,4 @@
-import React from "react";
+
 import type { TemplateElement } from "@/types/template";
 import type { DocumentMeta, InvoiceMeta, EstimateMeta, ReceiptMeta } from "@/types/document";
 import type { DocumentType } from "@/types/common";
@@ -14,23 +14,80 @@ interface Props {
 
 const LABEL_STYLE = "text-[10px] uppercase tracking-widest font-semibold opacity-60 leading-none mb-0.5";
 const VALUE_STYLE = "font-medium text-sm leading-snug";
-const DATE_INPUT = "w-full bg-transparent border border-transparent hover:border-blue-300 focus:border-blue-500 focus:outline-none rounded px-1 text-sm font-medium";
+const DATE_INPUT = "w-full bg-transparent border border-transparent hover:border-blue-300 focus:border-blue-500 focus:outline-none rounded px-0.5 py-0 text-sm font-medium";
 
-function FieldRow({ label, value, fillMode, onChange, inputType = "text", onDateChange }: {
+/** Format an ISO date string (YYYY-MM-DD) to MM/DD/YYYY for display. */
+function formatDateDisplay(iso: string): string {
+    if (!iso) return "";
+    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[2]}/${m[3]}/${m[1]}` : iso;
+}
+
+interface TableStyle {
+    labelBg: string;
+    labelColor: string;
+    valueBg: string;
+    valueColor: string;
+    borderColor: string;
+}
+
+function FieldRow({ label, value, fillMode, onChange, inputType = "text", onDateChange, tableStyle }: {
     label: string; value: string; fillMode: boolean;
     onChange?: (v: string) => void; inputType?: string; onDateChange?: (v: string) => void;
+    tableStyle?: TableStyle;
 }) {
+    if (tableStyle) {
+        const valueNode = fillMode
+            ? inputType === "date"
+                ? <input type="date" value={value} onChange={(e) => onDateChange?.(e.target.value)} className={DATE_INPUT} style={{ height: '1lh', font: 'inherit', color: tableStyle.valueColor }} />
+                : <InlineField value={value} onChange={onChange!} className={VALUE_STYLE} />
+            : <span style={{ color: tableStyle.valueColor }}>{inputType === "date" ? (formatDateDisplay(value) || "\u2014") : (value || "\u2014")}</span>;
+
+        return (
+            <div style={{ display: "flex", borderBottom: `1px solid ${tableStyle.borderColor}` }}>
+                <div style={{
+                    padding: "6px 10px",
+                    background: tableStyle.labelBg,
+                    color: tableStyle.labelColor,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: "0.07em",
+                    textTransform: "uppercase",
+                    width: "42%",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                }}>
+                    {label}
+                </div>
+                <div style={{
+                    flex: 1,
+                    padding: "6px 10px",
+                    background: tableStyle.valueBg,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: "flex",
+                    alignItems: "center",
+                }}>
+                    {valueNode}
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="py-1.5 border-b border-current/10 last:border-0" style={{ minWidth: "100px" }}>
+        <div className="py-1.5 border-b border-current/10 last:border-0 w-full">
             <div className={LABEL_STYLE}>{label}</div>
             {fillMode ? (
                 inputType === "date" ? (
-                    <input type="date" value={value} onChange={(e) => onDateChange?.(e.target.value)} className={DATE_INPUT} />
+                    <input type="date" value={value} onChange={(e) => onDateChange?.(e.target.value)} className={DATE_INPUT} style={{ height: '1lh', font: 'inherit' }} />
                 ) : (
                     <InlineField value={value} onChange={onChange!} className={VALUE_STYLE} />
                 )
             ) : (
-                <div className={VALUE_STYLE}>{value || "\u2014"}</div>
+                <div className={VALUE_STYLE}>
+                    {inputType === "date" ? (formatDateDisplay(value) || "\u2014") : (value || "\u2014")}
+                </div>
             )}
         </div>
     );
@@ -51,7 +108,17 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
     const isRight = textAlign === "right";
     const layout = (element.config?.layout as string | undefined) ?? "vertical";
     const isHorizontal = layout === "horizontal";
-    const justify = (element.config?.justify as string | undefined) ?? "stretch";
+    const isTable = layout === "table";
+    const gridColumns = (element.config?.gridColumns as number | undefined) ?? 3;
+
+    // Table layout style config
+    const tableStyle: TableStyle | undefined = isTable ? {
+        labelBg: (element.styles?.labelBg as string | undefined) ?? "#111111",
+        labelColor: (element.styles?.labelColor as string | undefined) ?? "#ffffff",
+        valueBg: (element.styles?.valueBg as string | undefined) ?? "#ffffff",
+        valueColor: (element.styles?.valueColor as string | undefined) ?? "#111111",
+        borderColor: (element.styles?.tableBorderColor as string | undefined) ?? "#e5e7eb",
+    } : undefined;
 
     const containerStyle: React.CSSProperties = {
         ...(element.styles as React.CSSProperties),
@@ -59,9 +126,11 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
     };
 
     const fieldsStyle: React.CSSProperties = isHorizontal
-        ? { display: "flex", flexDirection: "row", flexWrap: "nowrap", gap: "0 16px", alignItems: "start", width: "100%", justifyContent: justify === "stretch" ? "flex-start" : justify }
-        : { display: "flex", flexDirection: "column", flex: 1 };
-    const fieldItemStyle: React.CSSProperties = isHorizontal ? { ...(justify === "stretch" ? { flex: 1 } : {}), minWidth: 0 } : {};
+        ? { display: "grid", gridTemplateColumns: `repeat(${gridColumns}, 1fr)`, gap: "0 16px", width: "100%", alignItems: "start" }
+        : isTable
+          ? { display: "flex", flexDirection: "column", width: "100%", border: `1px solid ${tableStyle!.borderColor}`, borderRadius: 4, overflow: "hidden" }
+          : { display: "flex", flexDirection: "column", width: "100%" };
+    const fieldItemStyle: React.CSSProperties = isTable ? { display: "contents" } : { minWidth: 0, width: "100%" };
 
     const TITLE_MAP: Record<string, string> = { invoice: "INVOICE", estimate: "ESTIMATE", receipt: "RECEIPT" };
     const title = TITLE_MAP[docType] ?? "INVOICE";
@@ -95,6 +164,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label={docType === "estimate" ? "Estimate #" : docType === "receipt" ? "Receipt #" : "Invoice #"}
                             value={docType === "estimate" ? (est.number ?? "") : docType === "receipt" ? (rec.number ?? "") : (inv.number ?? "")}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             onChange={(v) => {
                                 if (docType === "estimate") onUpdateEstimateMeta({ number: v });
                                 else if (docType === "receipt") onUpdateReceiptMeta({ number: v });
@@ -111,6 +181,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label={docType === "receipt" ? "Issue Date" : "Date"}
                             value={docType === "estimate" ? (est.date ?? "") : docType === "receipt" ? (rec.issueDate ?? "") : (inv.date ?? "")}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             inputType="date"
                             onDateChange={(v) => {
                                 if (docType === "estimate") onUpdateEstimateMeta({ date: v });
@@ -128,6 +199,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label="Due Date"
                             value={inv.dueDate ?? ""}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             inputType="date"
                             onDateChange={(v) => onUpdateInvoiceMeta({ dueDate: v })}
                         />
@@ -141,6 +213,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label="Expiry Date"
                             value={est.expiryDate ?? ""}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             inputType="date"
                             onDateChange={(v) => onUpdateEstimateMeta({ expiryDate: v })}
                         />
@@ -154,6 +227,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label="Terms"
                             value={inv.terms ?? ""}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             onChange={(v) => onUpdateInvoiceMeta({ terms: v })}
                         />
                     </div>
@@ -166,6 +240,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label="PO Number"
                             value={docType === "estimate" ? (est.poNumber ?? "") : (inv.poNumber ?? "")}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             onChange={(v) => {
                                 if (docType === "estimate") onUpdateEstimateMeta({ poNumber: v });
                                 else onUpdateInvoiceMeta({ poNumber: v });
@@ -181,6 +256,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label="Project"
                             value={docType === "estimate" ? (est.projectName ?? "") : (inv.projectName ?? "")}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             onChange={(v) => {
                                 if (docType === "estimate") onUpdateEstimateMeta({ projectName: v });
                                 else onUpdateInvoiceMeta({ projectName: v });
@@ -196,6 +272,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label="Reference"
                             value={docType === "estimate" ? (est.reference ?? "") : (inv.reference ?? "")}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             onChange={(v) => {
                                 if (docType === "estimate") onUpdateEstimateMeta({ reference: v });
                                 else onUpdateInvoiceMeta({ reference: v });
@@ -211,6 +288,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label="Place of Supply"
                             value={inv.placeOfSupply ?? ""}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             onChange={(v) => onUpdateInvoiceMeta({ placeOfSupply: v })}
                         />
                     </div>
@@ -223,6 +301,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label="Payment Date"
                             value={rec.paymentDate ?? ""}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             inputType="date"
                             onDateChange={(v) => onUpdateReceiptMeta({ paymentDate: v })}
                         />
@@ -236,6 +315,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label="Payment Method"
                             value={rec.paymentMethod ?? ""}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             onChange={(v) => onUpdateReceiptMeta({ paymentMethod: v })}
                         />
                     </div>
@@ -248,6 +328,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label="Transaction ID"
                             value={rec.transactionId ?? ""}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             onChange={(v) => onUpdateReceiptMeta({ transactionId: v })}
                         />
                     </div>
@@ -260,6 +341,7 @@ export function DocumentInfoElement({ element, meta, docType: docTypeProp }: Pro
                             label="Related Invoice #"
                             value={rec.relatedInvoiceNumber ?? ""}
                             fillMode={fillMode}
+                            tableStyle={tableStyle}
                             onChange={(v) => onUpdateReceiptMeta({ relatedInvoiceNumber: v })}
                         />
                     </div>

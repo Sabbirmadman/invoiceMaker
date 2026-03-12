@@ -510,6 +510,14 @@ function TemplateBody({
 
     return (
         <>
+            {/* Left/right accent borders — absolutely positioned so they don't affect layout */}
+            {template.accentBorders?.left?.enabled && (
+                <div style={{ position: "absolute", top: 0, left: 0, width: template.accentBorders.left.width, height: "100%", background: template.accentBorders.left.color, zIndex: 10, pointerEvents: "none" }} />
+            )}
+            {template.accentBorders?.right?.enabled && (
+                <div style={{ position: "absolute", top: 0, right: 0, width: template.accentBorders.right.width, height: "100%", background: template.accentBorders.right.color, zIndex: 10, pointerEvents: "none" }} />
+            )}
+
             {/* Accent border top */}
             {template.accentBorders?.top?.enabled && (
                 <div style={{ height: template.accentBorders.top.width, background: template.accentBorders.top.color, flexShrink: 0 }} />
@@ -630,12 +638,8 @@ function pageBoxStyle(
         flexDirection: "column",
         fontFamily: template.theme?.fontFamily,
         color: template.theme?.primaryColor,
-        borderLeft: template.accentBorders?.left?.enabled
-            ? `${template.accentBorders.left.width}px solid ${template.accentBorders.left.color}`
-            : undefined,
-        borderRight: template.accentBorders?.right?.enabled
-            ? `${template.accentBorders.right.width}px solid ${template.accentBorders.right.color}`
-            : undefined,
+        // Left/right accent borders are rendered as absolutely-positioned child divs
+        // inside TemplateBody to avoid shrinking the content area.
     };
 }
 
