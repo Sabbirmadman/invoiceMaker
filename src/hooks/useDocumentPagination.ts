@@ -59,10 +59,10 @@ export function useDocumentPagination(
             ? (template.footer.height ?? FOOTER_FALLBACK)
             : 0;
 
-        const padTop    = template.pagePadding?.top    ?? 0;
+        const padTop = template.pagePadding?.top ?? 0;
         const padBottom = template.pagePadding?.bottom ?? 0;
-        const padLeft   = template.pagePadding?.left   ?? 0;
-        const padRight  = template.pagePadding?.right  ?? 0;
+        const padLeft = template.pagePadding?.left ?? 0;
+        const padRight = template.pagePadding?.right ?? 0;
 
         const availableH = dims.height - headerH - footerH - padTop - padBottom;
 
@@ -99,18 +99,32 @@ export function useDocumentPagination(
         measureRef.current
             .querySelectorAll<HTMLElement>("[data-row-index]")
             .forEach((el) => {
-                const idx = parseInt(el.getAttribute("data-row-index") ?? "0", 10);
+                const idx = parseInt(
+                    el.getAttribute("data-row-index") ?? "0",
+                    10,
+                );
                 rowHeights[idx] = el.offsetHeight || FALLBACK_ROW_HEIGHT;
             });
         for (let i = 0; i < totalItems; i++) {
             if (!rowHeights[i]) rowHeights[i] = FALLBACK_ROW_HEIGHT;
         }
 
+        // ── Measure actual column header + add-row button heights ─────────────
+        const colHeaderEl =
+            measureRef.current.querySelector<HTMLElement>("[data-col-header]");
+        const measuredColHeaderH = colHeaderEl
+            ? colHeaderEl.offsetHeight
+            : COL_HEADER_HEIGHT;
+
+        const addRowBtnEl =
+            measureRef.current.querySelector<HTMLElement>("[data-add-row-btn]");
+        const addRowAreaH = addRowBtnEl ? addRowBtnEl.offsetHeight : 0;
+
         // ── Expose padding so PagedCanvas can read it ─────────────────────────
-        measureRef.current.dataset.padTop    = String(padTop);
+        measureRef.current.dataset.padTop = String(padTop);
         measureRef.current.dataset.padBottom = String(padBottom);
-        measureRef.current.dataset.padLeft   = String(padLeft);
-        measureRef.current.dataset.padRight  = String(padRight);
+        measureRef.current.dataset.padLeft = String(padLeft);
+        measureRef.current.dataset.padRight = String(padRight);
 
         // ── Two-level greedy packing ──────────────────────────────────────────
         const result: PageSliceValue[] = [];
@@ -194,8 +208,10 @@ export function useDocumentPagination(
                 let isFirstItemPage = true;
 
                 while (itemStart < totalItems) {
-                    const pageBudget = isFirstItemPage ? pendingBudget : availableH;
-                    let rowBudget = pageBudget - COL_HEADER_HEIGHT;
+                    const pageBudget = isFirstItemPage
+                        ? pendingBudget
+                        : availableH;
+                    let rowBudget = pageBudget - measuredColHeaderH;
 
                     // Pack as many rows as fit.
                     let itemEnd = itemStart;
@@ -220,7 +236,7 @@ export function useDocumentPagination(
                             pendingGridIds = [grid.id];
                             pendingBudget = availableH;
                         }
-                        pendingBudget = rowBudget; // remaining after rows
+                        pendingBudget = rowBudget - addRowAreaH; // remaining after rows + add-row button
                         pendingItemStart = itemStart;
                         pendingItemEnd = itemEnd;
                         itemStart = itemEnd;
@@ -231,7 +247,14 @@ export function useDocumentPagination(
                             ? [...pendingGridIds, grid.id]
                             : [grid.id];
 
-                        pushPage(pageGridIds, itemStart, itemEnd, false, false, false);
+                        pushPage(
+                            pageGridIds,
+                            itemStart,
+                            itemEnd,
+                            false,
+                            false,
+                            false,
+                        );
 
                         itemStart = itemEnd;
                         isFirstItemPage = false;
@@ -293,9 +316,11 @@ export function useDocumentPagination(
             debounce = setTimeout(scheduleCompute, 50);
         });
         // Observe every measured element so row-height changes trigger recompute.
-        container.querySelectorAll<HTMLElement>("[data-grid-id], [data-row-index]").forEach((el) => {
-            obs.observe(el);
-        });
+        container
+            .querySelectorAll<HTMLElement>("[data-grid-id], [data-row-index]")
+            .forEach((el) => {
+                obs.observe(el);
+            });
         return () => {
             if (debounce) clearTimeout(debounce);
             obs.disconnect();

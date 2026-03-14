@@ -68,7 +68,6 @@ const COLUMN_ALIGN: Record<ColKey, string> = {
 // Fixed height for every data row cell — keeps edit and preview heights identical.
 const CELL_H = "min-h-[28px]";
 
-
 export function ItemListElement({
     element,
     items,
@@ -81,21 +80,32 @@ export function ItemListElement({
     const { fillMode, onUpdateItems } = useFillMode();
     usePageSlice();
     const columns = (element.config?.columns as ColKey[]) ?? DEFAULT_COLUMNS;
-    const stackNameDescription = (element.config?.stackNameDescription as boolean) ?? false;
+    const stackNameDescription =
+        (element.config?.stackNameDescription as boolean) ?? false;
     const headerBg = (element.styles?.headerBackground as string) ?? "#111111";
     const headerColor = (element.styles?.headerColor as string) ?? "#ffffff";
-    const altRowColor = (element.styles?.alternateRowColor as string) ?? "#f0f2f5";
-    const rowBorderColor = (element.styles?.rowBorderColor as string) ?? "#e5e7eb";
+    const altRowColor =
+        (element.styles?.alternateRowColor as string) ?? "#f0f2f5";
+    const rowBorderColor =
+        (element.styles?.rowBorderColor as string) ?? "#e5e7eb";
     const showOuterBorder = element.styles?.showOuterBorder === "true";
-    const showColumnBorders = (element.config?.showColumnBorders as boolean) ?? false;
-    const descriptionWrap = (element.config?.descriptionWrap as boolean) ?? false;
+    const showColumnBorders =
+        (element.config?.showColumnBorders as boolean) ?? false;
+    const descriptionWrap =
+        (element.config?.descriptionWrap as boolean) ?? false;
     const full = allItems ?? items;
 
     // Text style — from the shared WidgetStylesPanel (color, fontSize, fontWeight)
     const textStyle: React.CSSProperties = {
-        ...(element.styles?.color ? { color: element.styles.color as string } : {}),
-        ...(element.styles?.fontSize ? { fontSize: element.styles.fontSize as string } : {}),
-        ...(element.styles?.fontWeight ? { fontWeight: element.styles.fontWeight as string } : {}),
+        ...(element.styles?.color
+            ? { color: element.styles.color as string }
+            : {}),
+        ...(element.styles?.fontSize
+            ? { fontSize: element.styles.fontSize as string }
+            : {}),
+        ...(element.styles?.fontWeight
+            ? { fontWeight: element.styles.fontWeight as string }
+            : {}),
     };
 
     // When stacked, description is folded into the name column — remove it from the column list
@@ -139,25 +149,42 @@ export function ItemListElement({
             className="w-full text-sm"
             style={{
                 ...textStyle,
-                ...(showOuterBorder ? { border: rowBorderStyle, borderRadius: 2 } : {}),
+                ...(showOuterBorder
+                    ? { border: rowBorderStyle, borderRadius: 2 }
+                    : {}),
             }}
         >
             {showHeader && (
                 <div
                     data-col-header
                     className="flex w-full"
-                    style={{ backgroundColor: headerBg, color: headerColor, borderBottom: rowBorderStyle }}
+                    style={{
+                        backgroundColor: headerBg,
+                        color: headerColor,
+                        borderBottom: rowBorderStyle,
+                    }}
                 >
                     {/* Spacer — always same width in both modes to keep columns aligned */}
                     <div className="w-8 shrink-0" />
-                    <div className="w-8 px-3 py-2 text-left font-medium shrink-0" style={{ borderRight: colBorder }}>#</div>
+                    <div
+                        className="w-8 px-3 py-2 text-left font-medium shrink-0"
+                        style={{ borderRight: colBorder }}
+                    >
+                        #
+                    </div>
                     {effectiveColumns.map((col, ci) => (
                         <div
                             key={col}
                             className={`px-3 py-2 font-medium ${COLUMN_ALIGN[col]}`}
                             style={{
-                                flex: stackNameDescription && col === "name" ? 2 : 1,
-                                borderRight: ci < effectiveColumns.length - 1 ? colBorder : undefined,
+                                flex:
+                                    stackNameDescription && col === "name"
+                                        ? 2
+                                        : 1,
+                                borderRight:
+                                    ci < effectiveColumns.length - 1
+                                        ? colBorder
+                                        : undefined,
                             }}
                         >
                             {stackNameDescription && col === "name"
@@ -169,7 +196,10 @@ export function ItemListElement({
             )}
 
             {items.length === 0 && !fillMode ? (
-                <div className="text-muted-foreground text-center py-6 text-sm" style={{ borderBottom: rowBorderStyle }}>
+                <div
+                    className="text-muted-foreground text-center py-6 text-sm"
+                    style={{ borderBottom: rowBorderStyle }}
+                >
                     No items yet
                 </div>
             ) : (
@@ -181,7 +211,8 @@ export function ItemListElement({
                             data-row-index={globalIdx}
                             className="flex w-full items-stretch group"
                             style={{
-                                backgroundColor: idx % 2 === 1 ? altRowColor : "#ffffff",
+                                backgroundColor:
+                                    idx % 2 === 1 ? altRowColor : "#ffffff",
                                 borderBottom: rowBorderStyle,
                             }}
                         >
@@ -199,7 +230,10 @@ export function ItemListElement({
                             )}
 
                             {/* Row number — doubles as ↑↓ move buttons on hover in fill mode */}
-                            <div className={`w-8 shrink-0 ${CELL_H} flex items-center relative`} style={{ borderRight: colBorder }}>
+                            <div
+                                className={`w-8 shrink-0 ${CELL_H} flex items-center relative`}
+                                style={{ borderRight: colBorder }}
+                            >
                                 {fillMode ? (
                                     <>
                                         <span className="px-3 text-muted-foreground group-hover:opacity-0 transition-opacity select-none">
@@ -207,15 +241,28 @@ export function ItemListElement({
                                         </span>
                                         <div className="absolute inset-0 flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
-                                                onClick={() => moveItem(globalIdx, globalIdx - 1)}
+                                                onClick={() =>
+                                                    moveItem(
+                                                        globalIdx,
+                                                        globalIdx - 1,
+                                                    )
+                                                }
                                                 disabled={globalIdx === 0}
                                                 className="flex-1 flex items-center justify-center text-blue-400 hover:text-blue-600 disabled:opacity-20 disabled:cursor-not-allowed"
                                             >
                                                 <ChevronUp className="size-3" />
                                             </button>
                                             <button
-                                                onClick={() => moveItem(globalIdx, globalIdx + 1)}
-                                                disabled={globalIdx === full.length - 1}
+                                                onClick={() =>
+                                                    moveItem(
+                                                        globalIdx,
+                                                        globalIdx + 1,
+                                                    )
+                                                }
+                                                disabled={
+                                                    globalIdx ===
+                                                    full.length - 1
+                                                }
                                                 className="flex-1 flex items-center justify-center text-blue-400 hover:text-blue-600 disabled:opacity-20 disabled:cursor-not-allowed"
                                             >
                                                 <ChevronDown className="size-3" />
@@ -223,35 +270,75 @@ export function ItemListElement({
                                         </div>
                                     </>
                                 ) : (
-                                    <span className="px-3 text-muted-foreground">{globalIdx + 1}</span>
+                                    <span className="px-3 text-muted-foreground">
+                                        {globalIdx + 1}
+                                    </span>
                                 )}
                             </div>
 
                             {/* Data columns */}
                             {effectiveColumns.map((col, ci) => {
-                                const isStackedName = stackNameDescription && col === "name";
-                                const isWrapDesc = col === "description" && descriptionWrap;
-                                const cellPadding = isStackedName ? "py-2" : isWrapDesc ? "py-1" : CELL_H;
-                                const cellAlign = isStackedName || isWrapDesc ? "items-start" : "items-center";
+                                const isStackedName =
+                                    stackNameDescription && col === "name";
+                                const isWrapDesc =
+                                    col === "description" && descriptionWrap;
+                                const cellPadding = isStackedName
+                                    ? "py-2"
+                                    : isWrapDesc
+                                      ? "py-1"
+                                      : CELL_H;
+                                const cellAlign =
+                                    isStackedName || isWrapDesc
+                                        ? "items-start"
+                                        : "items-center";
                                 return (
-                                <div
-                                    key={col}
-                                    className={`min-w-0 px-2 ${cellPadding} flex ${cellAlign} ${COLUMN_ALIGN[col]}`}
-                                    style={{
-                                        flex: isStackedName ? 2 : 1,
-                                        borderRight: ci < effectiveColumns.length - 1 ? colBorder : undefined,
-                                    }}
-                                >
-                                    {col === "amount"
-                                        ? renderCell(col, item, currency, descriptionWrap)
-                                        : fillMode
-                                          ? (stackNameDescription && col === "name"
-                                                ? renderStackedEditCell(item, idx, updateItem)
-                                                : renderEditCell(col, item, idx, updateItem, currency, descriptionWrap))
-                                          : (stackNameDescription && col === "name"
-                                                ? renderStackedCell(item, descriptionWrap)
-                                                : renderCell(col, item, currency, descriptionWrap))}
-                                </div>
+                                    <div
+                                        key={col}
+                                        className={`min-w-0 px-2 ${cellPadding} flex ${cellAlign} ${COLUMN_ALIGN[col]}`}
+                                        style={{
+                                            flex: isStackedName ? 2 : 1,
+                                            borderRight:
+                                                ci < effectiveColumns.length - 1
+                                                    ? colBorder
+                                                    : undefined,
+                                        }}
+                                    >
+                                        {col === "amount"
+                                            ? renderCell(
+                                                  col,
+                                                  item,
+                                                  currency,
+                                                  descriptionWrap,
+                                              )
+                                            : fillMode
+                                              ? stackNameDescription &&
+                                                col === "name"
+                                                  ? renderStackedEditCell(
+                                                        item,
+                                                        idx,
+                                                        updateItem,
+                                                    )
+                                                  : renderEditCell(
+                                                        col,
+                                                        item,
+                                                        idx,
+                                                        updateItem,
+                                                        currency,
+                                                        descriptionWrap,
+                                                    )
+                                              : stackNameDescription &&
+                                                  col === "name"
+                                                ? renderStackedCell(
+                                                      item,
+                                                      descriptionWrap,
+                                                  )
+                                                : renderCell(
+                                                      col,
+                                                      item,
+                                                      currency,
+                                                      descriptionWrap,
+                                                  )}
+                                    </div>
                                 );
                             })}
                         </div>
@@ -260,13 +347,15 @@ export function ItemListElement({
             )}
 
             {fillMode && isLastPage && (
-                <button
-                    onClick={addItem}
-                    className="flex items-center gap-2 mt-2 px-3 py-1.5 text-sm text-primary hover:bg-primary/10 rounded transition-colors"
-                >
-                    <Plus className="size-3" />
-                    Add Row
-                </button>
+                <div data-add-row-btn style={{ paddingTop: 8 }}>
+                    <button
+                        onClick={addItem}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-primary hover:bg-primary/10 rounded transition-colors"
+                    >
+                        <Plus className="size-3" />
+                        Add Row
+                    </button>
+                </div>
             )}
         </div>
     );
@@ -274,12 +363,21 @@ export function ItemListElement({
 
 // ── Stacked name + description (preview) ─────────────────────────────────────
 
-function renderStackedCell(item: LineItem, descriptionWrap: boolean): React.ReactNode {
+function renderStackedCell(
+    item: LineItem,
+    descriptionWrap: boolean,
+): React.ReactNode {
     return (
         <div className="py-0.5 w-full">
-            <div className="font-medium leading-snug">{item.name || <span className="text-muted-foreground/40">Item name</span>}</div>
+            <div className="font-medium leading-snug">
+                {item.name || (
+                    <span className="text-muted-foreground/40">Item name</span>
+                )}
+            </div>
             {item.description && (
-                <div className={`text-xs text-muted-foreground leading-snug mt-0.5 ${descriptionWrap ? "whitespace-normal wrap-break-word" : "truncate"}`}>
+                <div
+                    className={`text-xs text-muted-foreground leading-snug mt-0.5 ${descriptionWrap ? "whitespace-normal wrap-break-word" : "truncate"}`}
+                >
                     {item.description}
                 </div>
             )}
@@ -294,7 +392,8 @@ function renderStackedEditCell(
     idx: number,
     updateItem: (idx: number, patch: Partial<LineItem>) => void,
 ): React.ReactNode {
-    const base = "w-full bg-transparent border border-transparent hover:border-blue-300 focus:border-blue-500 focus:outline-none rounded px-1 py-0 leading-5";
+    const base =
+        "w-full bg-transparent border border-transparent hover:border-blue-300 focus:border-blue-500 focus:outline-none rounded px-1 py-0 leading-5";
     return (
         <div className="w-full py-0.5">
             <input
@@ -313,13 +412,24 @@ function renderStackedEditCell(
     );
 }
 
-function renderCell(col: ColKey, item: LineItem, currency: string, descriptionWrap = false): React.ReactNode {
+function renderCell(
+    col: ColKey,
+    item: LineItem,
+    currency: string,
+    descriptionWrap = false,
+): React.ReactNode {
     switch (col) {
         case "name":
             return item.name;
         case "description":
             return (
-                <span className={descriptionWrap ? "whitespace-normal wrap-break-word w-full" : "truncate w-full"}>
+                <span
+                    className={
+                        descriptionWrap
+                            ? "whitespace-normal wrap-break-word w-full"
+                            : "truncate w-full"
+                    }
+                >
                     {item.description}
                 </span>
             );
@@ -409,7 +519,9 @@ function NumericEditCell({
                 className={`${baseClass} cursor-text`}
                 onClick={() => {
                     setFocused(true);
-                    setTimeout(() => { inputRef.current?.select(); }, 0);
+                    setTimeout(() => {
+                        inputRef.current?.select();
+                    }, 0);
                 }}
             >
                 {format(value)}
@@ -467,7 +579,9 @@ function renderEditCell(
                 <input
                     className={inputClass}
                     value={item.description}
-                    onChange={(e) => updateItem(idx, { description: e.target.value })}
+                    onChange={(e) =>
+                        updateItem(idx, { description: e.target.value })
+                    }
                     placeholder="Description"
                 />
             );
